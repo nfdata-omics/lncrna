@@ -1,0 +1,270 @@
+{
+    "homo_sapiens - fastq - paired_end - transcripts - no_transcriptome": {
+        "content": [
+            "1e02b8e6b4a02ab58bfe4ee795aba815",
+            "47a5da42b696886e2ed36af199a9042e",
+            [
+                
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.SJ.out.tab:md5,844af19ab0fc8cd9a3f75228445aca0d"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.stats:md5,ce44c01553879fa54f09c46cdbb89f71"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.flagstat:md5,db0e25cd0b37d3030e807846c022199e"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.idxstats:md5,107ca94dd426cc44db316f0d402307c5"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.stats:md5,b3e3d378fa255b82919a88b2585fb658"
+                ]
+            ],
+            [
+                "versions.yml:md5,167faaf660e4936645b0ad5a9d3bf620",
+                "versions.yml:md5,46a72613cfb790412c2d4c3922f031ea",
+                "versions.yml:md5,484d39e22399f461f7216de15863b7f6",
+                "versions.yml:md5,6d04615365467e28edbe029904402f96",
+                "versions.yml:md5,79c45f6683c30e93dc8e1f938185dc4d",
+                "versions.yml:md5,902c1e91ef8c57029ea63f7489a4e741",
+                "versions.yml:md5,b42944e4a0114801de264f0eb659ba2a"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.0"
+        },
+        "timestamp": "2025-11-27T16:12:09.131407"
+    },
+    "homo_sapiens - fastq - paired_end - with_transcriptome": {
+        "content": [
+            "1e02b8e6b4a02ab58bfe4ee795aba815",
+            "47a5da42b696886e2ed36af199a9042e",
+            "9b8ec790f8138071a0731b5225c84f00",
+            "9b8ec790f8138071a0731b5225c84f00",
+            [
+                
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.SJ.out.tab:md5,844af19ab0fc8cd9a3f75228445aca0d"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.stats:md5,ce44c01553879fa54f09c46cdbb89f71"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.flagstat:md5,db0e25cd0b37d3030e807846c022199e"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.idxstats:md5,107ca94dd426cc44db316f0d402307c5"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.stats:md5,361866900d0cd04d15ff6af19af57f21"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.flagstat:md5,a204dee59ef8b7cd0f7d952a80119b77"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.idxstats:md5,4030919b4a05393dcd7e699d72725803"
+                ]
+            ],
+            [
+                "versions.yml:md5,167faaf660e4936645b0ad5a9d3bf620",
+                "versions.yml:md5,46a72613cfb790412c2d4c3922f031ea",
+                "versions.yml:md5,484d39e22399f461f7216de15863b7f6",
+                "versions.yml:md5,6d04615365467e28edbe029904402f96",
+                "versions.yml:md5,79c45f6683c30e93dc8e1f938185dc4d",
+                "versions.yml:md5,902c1e91ef8c57029ea63f7489a4e741",
+                "versions.yml:md5,b42944e4a0114801de264f0eb659ba2a"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.0"
+        },
+        "timestamp": "2025-11-27T16:11:12.668701"
+    },
+    "homo_sapiens - fastq - single_end": {
+        "content": [
+            "8b3699d1b3344c90f82363edadae6427",
+            "c491ec34a25f55c7583e325e0a191b5d",
+            [
+                
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": true
+                    },
+                    "test.SJ.out.tab:md5,75a516ab950fb958f40b29996474949c"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": true
+                    },
+                    "test.sorted.bam.stats:md5,bcac43a4bc49e0ebd1674a70439056b8"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": true
+                    },
+                    "test.sorted.bam.flagstat:md5,075e7a684a7ceb5fd1dae154f823128a"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": true
+                    },
+                    "test.sorted.bam.idxstats:md5,0d5a12e3e3ffdb15f1c6c50f02f22575"
+                ]
+            ],
+            [
+                "versions.yml:md5,167faaf660e4936645b0ad5a9d3bf620",
+                "versions.yml:md5,46a72613cfb790412c2d4c3922f031ea",
+                "versions.yml:md5,6d04615365467e28edbe029904402f96",
+                "versions.yml:md5,902c1e91ef8c57029ea63f7489a4e741"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.04.7"
+        },
+        "timestamp": "2025-11-26T14:59:10.53084"
+    },
+    "homo_sapiens - fastq - paired_end": {
+        "content": [
+            "1e02b8e6b4a02ab58bfe4ee795aba815",
+            "47a5da42b696886e2ed36af199a9042e",
+            [
+                
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.SJ.out.tab:md5,844af19ab0fc8cd9a3f75228445aca0d"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.stats:md5,ce44c01553879fa54f09c46cdbb89f71"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.flagstat:md5,db0e25cd0b37d3030e807846c022199e"
+                ]
+            ],
+            [
+                [
+                    {
+                        "id": "test",
+                        "single_end": false
+                    },
+                    "test.sorted.bam.idxstats:md5,107ca94dd426cc44db316f0d402307c5"
+                ]
+            ],
+            [
+                "versions.yml:md5,167faaf660e4936645b0ad5a9d3bf620",
+                "versions.yml:md5,46a72613cfb790412c2d4c3922f031ea",
+                "versions.yml:md5,6d04615365467e28edbe029904402f96",
+                "versions.yml:md5,902c1e91ef8c57029ea63f7489a4e741"
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.10.0"
+        },
+        "timestamp": "2025-11-27T16:10:14.208687"
+    }
+}
