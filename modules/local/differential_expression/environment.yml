@@ -1,0 +1,14 @@
+name: differential_expression
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bioconda::bioconductor-deseq2=1.40.0
+  - bioconda::bioconductor-edger=3.42.0
+  - bioconda::bioconductor-limma=3.56.0
+  - conda-forge::r-optparse
+  - conda-forge::r-ggplot2
+  - conda-forge::r-pheatmap
+  - conda-forge::r-rcolorbrewer
+  - conda-forge::r-ggrepel
