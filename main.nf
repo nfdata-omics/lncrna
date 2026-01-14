@@ -93,7 +93,7 @@ workflow NFDATAOMICS_LNCRNA {
         params.filter_lncrna_gtf,
         params.skip_sortmerna
     )
-    ch_versions = ch_versions.mix(PREPARE_GENOME.out.versions)
+    //ch_versions = ch_versions.mix(PREPARE_GENOME.out.versions)
 
     // Check if contigs in genome fasta file > 512 Mbp
     if (!params.skip_alignment && !params.bam_csi_index) {
@@ -133,7 +133,7 @@ workflow NFDATAOMICS_LNCRNA {
         !params.sortmerna_index && params.remove_ribo_rna   // make_sortmerna_index
     )
 
-    ch_versions = ch_versions.mix(LNCRNA.out.versions)
+    //ch_versions = ch_versions.mix(LNCRNA.out.versions)
     emit:
     multiqc_report = LNCRNA.out.multiqc_report // channel: /path/to/multiqc_report.html
     versions       = ch_versions

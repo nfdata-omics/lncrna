@@ -80,7 +80,7 @@ workflow FASTQ_FASTQC_UMITOOLS_FASTP {
         )
         umi_reads = UMITOOLS_EXTRACT.out.reads
         umi_log = UMITOOLS_EXTRACT.out.log
-        ch_versions = ch_versions.mix(UMITOOLS_EXTRACT.out.versions.first())
+//        ch_versions = ch_versions.mix(UMITOOLS_EXTRACT.out.versions.first())
 
         // Discard R1 / R2 if required
         if (umi_discard_read in [1, 2]) {
@@ -114,7 +114,7 @@ workflow FASTQ_FASTQC_UMITOOLS_FASTP {
         trim_log = FASTP.out.log
         trim_reads_fail = FASTP.out.reads_fail
         trim_reads_merged = FASTP.out.reads_merged
-        ch_versions = ch_versions.mix(FASTP.out.versions.first())
+//        ch_versions = ch_versions.mix(FASTP.out.versions.first())
 
         //
         // Filter FastQ files based on minimum trimmed read count after adapter trimming

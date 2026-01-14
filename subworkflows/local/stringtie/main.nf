@@ -20,7 +20,7 @@ workflow STRINGTIE_WORKFLOW {
         //
         STRINGTIE_STRINGTIE(bam_sorted, ch_gtf)
         ch_stringtie_gtf = STRINGTIE_STRINGTIE.out.transcript_gtf.map { meta, transcript_gtf -> [ transcript_gtf ] }.collect()
-        ch_versions = ch_versions.mix(STRINGTIE_STRINGTIE.out.versions)
+//        ch_versions = ch_versions.mix(STRINGTIE_STRINGTIE.out.versions)
 
         //
         // STRINGTIE: Merge transcript assemblies into a non-redundant annotation
@@ -31,7 +31,7 @@ workflow STRINGTIE_WORKFLOW {
                 def meta = [ id: 'stringtie_merged' ]
                 return [ meta, gtf_file ]
             }
-        ch_versions = ch_versions.mix(STRINGTIE_MERGE.out.versions)
+//        ch_versions = ch_versions.mix(STRINGTIE_MERGE.out.versions)
 
 
         //
@@ -55,7 +55,7 @@ workflow STRINGTIE_WORKFLOW {
             ch_fasta_meta_fai,
             ch_reference_gtf
         )
-        ch_versions = ch_versions.mix(GFFCOMPARE.out.versions)
+//        ch_versions = ch_versions.mix(GFFCOMPARE.out.versions)
 
         //
         // FILTER: lncRNA candidates by class code (i, u, x)
@@ -67,14 +67,14 @@ workflow STRINGTIE_WORKFLOW {
                 return [ meta, gtf_file ]
             }
         ch_classcode_stats = FILTER_GTF_BY_CLASSCODE.out.stats
-        ch_versions = ch_versions.mix(FILTER_GTF_BY_CLASSCODE.out.versions)
+//        ch_versions = ch_versions.mix(FILTER_GTF_BY_CLASSCODE.out.versions)
 
         //
         // CONVERT: GTF to FASTA
         //
         GTF_TO_FASTA ( ch_lncrna_candidates, ch_fasta )
         ch_lncrna_fasta = GTF_TO_FASTA.out.fasta
-        ch_versions = ch_versions.mix(GTF_TO_FASTA.out.versions)
+//        ch_versions = ch_versions.mix(GTF_TO_FASTA.out.versions)
 
 
     emit:

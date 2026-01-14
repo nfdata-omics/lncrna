@@ -154,7 +154,7 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
         FQ_LINT(
             ch_filtered_reads
         )
-        ch_versions = ch_versions.mix(FQ_LINT.out.versions.first())
+//        ch_versions = ch_versions.mix(FQ_LINT.out.versions.first())
         ch_lint_log = ch_lint_log.mix(FQ_LINT.out.lint)
         ch_filtered_reads = ch_filtered_reads.join(FQ_LINT.out.lint.map { it[0] })
     }
@@ -175,7 +175,7 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
         ch_filtered_reads = FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.reads
         ch_trim_read_count = FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.trim_read_count
 
-        ch_versions = ch_versions.mix(FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.versions)
+//        ch_versions = ch_versions.mix(FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.versions)
         ch_multiqc_files = FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.fastqc_zip
             .mix(FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.trim_zip)
             .mix(FASTQ_FASTQC_UMITOOLS_TRIMGALORE.out.trim_log)
@@ -201,7 +201,7 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
         ch_filtered_reads = FASTQ_FASTQC_UMITOOLS_FASTP.out.reads
         ch_trim_read_count = FASTQ_FASTQC_UMITOOLS_FASTP.out.trim_read_count
 
-        ch_versions = ch_versions.mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.versions)
+//        ch_versions = ch_versions.mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.versions)
         ch_multiqc_files = FASTQ_FASTQC_UMITOOLS_FASTP.out.fastqc_raw_zip
             .mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.fastqc_trim_zip)
             .mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.trim_json)
@@ -256,7 +256,7 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
 
         BBMAP_BBSPLIT.out.primary_fastq.set { ch_filtered_reads }
 
-        ch_versions = ch_versions.mix(BBMAP_BBSPLIT.out.versions.first())
+//        ch_versions = ch_versions.mix(BBMAP_BBSPLIT.out.versions.first())
         ch_multiqc_files = ch_multiqc_files.mix(BBMAP_BBSPLIT.out.stats)
 
         if (!skip_linting) {
@@ -282,7 +282,7 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
 
         ch_filtered_reads = FASTQ_REMOVE_RRNA.out.reads
         ch_multiqc_files = ch_multiqc_files.mix(FASTQ_REMOVE_RRNA.out.multiqc_files)
-        ch_versions = ch_versions.mix(FASTQ_REMOVE_RRNA.out.versions)
+//        ch_versions = ch_versions.mix(FASTQ_REMOVE_RRNA.out.versions)
 
         if (!skip_linting) {
             FQ_LINT_AFTER_RIBO_REMOVAL(
@@ -322,7 +322,7 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
         ch_salmon_index,
         make_salmon_index,
     )
-    ch_versions = ch_versions.mix(FASTQ_SUBSAMPLE_FQ_SALMON.out.versions)
+//    ch_versions = ch_versions.mix(FASTQ_SUBSAMPLE_FQ_SALMON.out.versions)
 
     FASTQ_SUBSAMPLE_FQ_SALMON.out.lib_format_counts
         .join(ch_strand_fastq.auto_strand)

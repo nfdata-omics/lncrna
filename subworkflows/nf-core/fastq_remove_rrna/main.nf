@@ -71,7 +71,7 @@ workflow FASTQ_REMOVE_RRNA {
 
         ch_filtered_reads = SORTMERNA.out.reads
         ch_multiqc_files = ch_multiqc_files.mix(SORTMERNA.out.log)
-        ch_versions = ch_versions.mix(SORTMERNA.out.versions.first())
+//        ch_versions = ch_versions.mix(SORTMERNA.out.versions.first())
     }
     else if (ribo_removal_tool == 'ribodetector') {
         // Run seqkit stats to determine average read length
@@ -79,7 +79,7 @@ workflow FASTQ_REMOVE_RRNA {
             ch_filtered_reads
         )
 
-        ch_versions = ch_versions.mix(SEQKIT_STATS.out.versions.first())
+//        ch_versions = ch_versions.mix(SEQKIT_STATS.out.versions.first())
         ch_multiqc_files = ch_multiqc_files.mix(SEQKIT_STATS.out.stats)
 
         // Join stats with reads and calculate read length for RiboDetector
@@ -113,7 +113,7 @@ workflow FASTQ_REMOVE_RRNA {
             SEQKIT_REPLACE(
                 ch_rrna_with_meta
             )
-            ch_versions = ch_versions.mix(SEQKIT_REPLACE.out.versions)
+//            ch_versions = ch_versions.mix(SEQKIT_REPLACE.out.versions)
 
             // Step 2: Convert U to T in sequences (RNA to DNA)
             SEQKIT_REPLACE.out.fastx
@@ -123,7 +123,7 @@ workflow FASTQ_REMOVE_RRNA {
             SEQKIT_REPLACE_U2T(
                 ch_prefixed_fastas
             )
-            ch_versions = ch_versions.mix(SEQKIT_REPLACE_U2T.out.versions)
+//            ch_versions = ch_versions.mix(SEQKIT_REPLACE_U2T.out.versions)
 
             // Collect processed files (already prefixed and U->T converted)
             SEQKIT_REPLACE_U2T.out.fastx
@@ -136,7 +136,7 @@ workflow FASTQ_REMOVE_RRNA {
                 ch_combined_fasta
             )
             ch_bowtie2_index = BOWTIE2_BUILD.out.index.first()
-            ch_versions = ch_versions.mix(BOWTIE2_BUILD.out.versions.first())
+//            ch_versions = ch_versions.mix(BOWTIE2_BUILD.out.versions.first())
         }
 
         // Branch reads by single-end vs paired-end for different filtering strategies
@@ -158,7 +158,7 @@ workflow FASTQ_REMOVE_RRNA {
         )
 
         ch_multiqc_files = ch_multiqc_files.mix(BOWTIE2_ALIGN.out.log)
-        ch_versions = ch_versions.mix(BOWTIE2_ALIGN.out.versions)
+//        ch_versions = ch_versions.mix(BOWTIE2_ALIGN.out.versions)
 
         // For paired-end reads: bowtie2's --un-conc-gz outputs pairs that didn't
         // align concordantly, which INCLUDES pairs where one mate aligned.
@@ -172,7 +172,7 @@ workflow FASTQ_REMOVE_RRNA {
         )
 
         ch_multiqc_files = ch_multiqc_files.mix(BOWTIE2_ALIGN_PE.out.log)
-        ch_versions = ch_versions.mix(BOWTIE2_ALIGN_PE.out.versions)
+//        ch_versions = ch_versions.mix(BOWTIE2_ALIGN_PE.out.versions)
 
         // Filter BAM for read pairs where BOTH mates are unmapped (flag 12 = 4 + 8)
         // This removes any pair where at least one mate aligned to rRNA
@@ -190,7 +190,7 @@ workflow FASTQ_REMOVE_RRNA {
             false  // not interleaved
         )
 
-        ch_versions = ch_versions.mix(SAMTOOLS_FASTQ_BOWTIE2.out.versions)
+//        ch_versions = ch_versions.mix(SAMTOOLS_FASTQ_BOWTIE2.out.versions)
 
         // Combine single-end and paired-end results
         BOWTIE2_ALIGN.out.fastq

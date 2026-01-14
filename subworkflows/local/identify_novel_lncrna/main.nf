@@ -29,7 +29,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         )
         ch_filtered_length_gtf = FILTER_TRANSCRIPTS_LENGTH.out.filtered_length_gtf
         ch_filtered_length_fa  = FILTER_TRANSCRIPTS_LENGTH.out.filtered_length_fasta
-        ch_versions = ch_versions.mix(FILTER_TRANSCRIPTS_LENGTH.out.versions)
+//        ch_versions = ch_versions.mix(FILTER_TRANSCRIPTS_LENGTH.out.versions)
 
 
         //
@@ -41,7 +41,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         )
         ch_filtered_exons_gtf = FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_gtf
         ch_filtered_exons_fa  = FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_fasta
-        ch_versions = ch_versions.mix(FILTER_TRANSCRIPTS_EXONS.out.versions)
+//        ch_versions = ch_versions.mix(FILTER_TRANSCRIPTS_EXONS.out.versions)
 
 
         //
@@ -62,7 +62,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
             )
             ch_cpat_hexamer = CPAT_BUILD_MODEL.out.hexamer
             ch_cpat_logit = CPAT_BUILD_MODEL.out.logit_model
-            ch_versions = ch_versions.mix(CPAT_BUILD_MODEL.out.versions)
+//            ch_versions = ch_versions.mix(CPAT_BUILD_MODEL.out.versions)
         } else {
             error "ERROR: Must provide either:\n" +
                     "  - Pre-built CPAT models (--cpat_hexamer and --cpat_logit_model)\n" +
@@ -80,7 +80,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
                 ch_cpat_logit
             )
             ch_cpat_results = CPAT.out.cpat_results
-            ch_versions = ch_versions.mix(CPAT.out.versions)
+//            ch_versions = ch_versions.mix(CPAT.out.versions)
         }
 
         //
@@ -92,7 +92,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
                 ch_fasta
             )
             ch_feelnc_results = FEELNC_CODPOT.out.feelnc_results
-            ch_versions = ch_versions.mix(FEELNC_CODPOT.out.versions)
+//            ch_versions = ch_versions.mix(FEELNC_CODPOT.out.versions)
         }
 
 
@@ -104,7 +104,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
                 ch_filtered_exons_fa
             )
             ch_plek_results = PLEK.out.plek_results
-            ch_versions = ch_versions.mix(PLEK.out.versions)
+//            ch_versions = ch_versions.mix(PLEK.out.versions)
         }
 
         //
@@ -121,7 +121,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         ch_final_lncrna_gtf = COMBINE_PREDICTIONS.out.lncrna_gtf
         ch_final_lncrna_fa  = COMBINE_PREDICTIONS.out.lncrna_fasta
         ch_lncrna_report    = COMBINE_PREDICTIONS.out.report
-        ch_versions = ch_versions.mix(COMBINE_PREDICTIONS.out.versions)
+//        ch_versions = ch_versions.mix(COMBINE_PREDICTIONS.out.versions)
 
 
     emit:

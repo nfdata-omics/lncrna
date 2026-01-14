@@ -25,7 +25,7 @@ RERUN_CPAT_LNCRNA (
     cpat_logit_model
 )
 ch_cpat_lncrna_results = RERUN_CPAT_LNCRNA.out.cpat_results
-ch_versions = ch_versions.mix(RERUN_CPAT_LNCRNA.out.versions)
+//ch_versions = ch_versions.mix(RERUN_CPAT_LNCRNA.out.versions)
 
 //
 // Re-run CPAT on protein-coding genes (control)
@@ -36,7 +36,7 @@ RERUN_CPAT_CODING (
     cpat_logit_model
 )
 ch_cpat_coding_results = RERUN_CPAT_CODING.out.cpat_results
-ch_versions = ch_versions.mix(RERUN_CPAT_CODING.out.versions)
+//ch_versions = ch_versions.mix(RERUN_CPAT_CODING.out.versions)
 
 //
 // Generate final statistics and report
@@ -52,7 +52,7 @@ ch_final_stats_report = GENERATE_FINAL_STATISTICS.out.final_stats_report
 ch_final_stats_summary = GENERATE_FINAL_STATISTICS.out.final_stats_summary
 ch_cpat_plot = GENERATE_FINAL_STATISTICS.out.cpat_plot
 ch_cpat_classification_plot = GENERATE_FINAL_STATISTICS.out.cpat_classification_plot
-ch_versions = ch_versions.mix(GENERATE_FINAL_STATISTICS.out.versions)
+//ch_versions = ch_versions.mix(GENERATE_FINAL_STATISTICS.out.versions)
 
 emit:
 // CPAT results

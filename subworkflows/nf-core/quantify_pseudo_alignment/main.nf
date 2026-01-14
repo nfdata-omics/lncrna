@@ -43,7 +43,7 @@ workflow QUANTIFY_PSEUDO_ALIGNMENT {
         )
         ch_pseudo_results = SALMON_QUANT.out.results
         ch_pseudo_multiqc = ch_pseudo_results
-        ch_versions = ch_versions.mix(SALMON_QUANT.out.versions.first())
+//        ch_versions = ch_versions.mix(SALMON_QUANT.out.versions.first())
     } else {
         KALLISTO_QUANT (
             reads,
@@ -55,7 +55,7 @@ workflow QUANTIFY_PSEUDO_ALIGNMENT {
         )
         ch_pseudo_results = KALLISTO_QUANT.out.results
         ch_pseudo_multiqc = KALLISTO_QUANT.out.log
-        ch_versions = ch_versions.mix(KALLISTO_QUANT.out.versions.first())
+//        ch_versions = ch_versions.mix(KALLISTO_QUANT.out.versions.first())
     }
 
     CUSTOM_TX2GENE (
@@ -65,14 +65,14 @@ workflow QUANTIFY_PSEUDO_ALIGNMENT {
         gtf_id_attribute,
         gtf_extra_attribute
     )
-    ch_versions = ch_versions.mix(CUSTOM_TX2GENE.out.versions)
+//    ch_versions = ch_versions.mix(CUSTOM_TX2GENE.out.versions)
 
     TXIMETA_TXIMPORT (
         ch_pseudo_results.collect{ it[1] }.map { [ ['id': 'all_samples'], it ] },
         CUSTOM_TX2GENE.out.tx2gene,
         pseudo_aligner
     )
-    ch_versions = ch_versions.mix(TXIMETA_TXIMPORT.out.versions)
+//    ch_versions = ch_versions.mix(TXIMETA_TXIMPORT.out.versions)
 
     ch_gene_unified = TXIMETA_TXIMPORT.out.counts_gene
                         .join(TXIMETA_TXIMPORT.out.counts_gene_length_scaled)
@@ -86,7 +86,7 @@ workflow QUANTIFY_PSEUDO_ALIGNMENT {
         CUSTOM_TX2GENE.out.tx2gene,
         samplesheet
     )
-    ch_versions = ch_versions.mix(SE_GENE_UNIFIED.out.versions)
+//    ch_versions = ch_versions.mix(SE_GENE_UNIFIED.out.versions)
 
     ch_transcript_unified = TXIMETA_TXIMPORT.out.counts_transcript
                         .join(TXIMETA_TXIMPORT.out.lengths_transcript)
@@ -98,7 +98,7 @@ workflow QUANTIFY_PSEUDO_ALIGNMENT {
         CUSTOM_TX2GENE.out.tx2gene,
         samplesheet
     )
-    ch_versions = ch_versions.mix(SE_TRANSCRIPT_UNIFIED.out.versions)
+//    ch_versions = ch_versions.mix(SE_TRANSCRIPT_UNIFIED.out.versions)
 
     emit:
     results                       = ch_pseudo_results                              // channel: [ val(meta), results_dir ]

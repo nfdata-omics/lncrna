@@ -47,7 +47,7 @@ workflow QUANTIFY_EXPRESSION {
             ch_featurecounts
         )
         ch_counts = SUBREAD_FEATURECOUNTS.out.counts
-        ch_versions = ch_versions.mix(SUBREAD_FEATURECOUNTS.out.versions.first())
+//        ch_versions = ch_versions.mix(SUBREAD_FEATURECOUNTS.out.versions.first())
     }
 
     //
@@ -61,7 +61,7 @@ workflow QUANTIFY_EXPRESSION {
             gtf
         )
         ch_counts = HTSEQ_COUNT.out.txt
-        ch_versions = ch_versions.mix(HTSEQ_COUNT.out.versions)
+//        ch_versions = ch_versions.mix(HTSEQ_COUNT.out.versions)
     }
     else {
         ch_counts = Channel.empty()
