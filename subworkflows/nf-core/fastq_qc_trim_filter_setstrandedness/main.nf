@@ -90,7 +90,6 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
     ch_gtf               // channel: /path/to/genome.gtf
     ch_salmon_index      // channel: /path/to/salmon/index/ (optional)
     ch_sortmerna_index   // channel: /path/to/sortmerna/index/ (optional)
-    ch_bowtie2_index     // channel: /path/to/bowtie2/index/ (optional)
     ch_bbsplit_index     // channel: /path/to/bbsplit/index/ (optional)
     ch_rrna_fastas       // channel: one or more fasta files containing rrna sequences to be passed to SortMeRNA/Bowtie2 (optional)
 
@@ -104,7 +103,6 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
     // Index generation
     make_salmon_index    // boolean: Whether to create salmon index before running salmon quant
     make_sortmerna_index // boolean: Whether to create a sortmerna index before running sortmerna
-    make_bowtie2_index   // boolean: Whether to create a bowtie2 index before running bowtie2
 
     // Trimming options
     trimmer              // string (enum): 'fastp' or 'trimgalore'
@@ -278,10 +276,8 @@ workflow FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS {
             ch_filtered_reads,
             ch_rrna_fastas,
             ch_sortmerna_index,
-            ch_bowtie2_index,
             ribo_removal_tool,
             make_sortmerna_index,
-            make_bowtie2_index,
         )
 
         ch_filtered_reads = FASTQ_REMOVE_RRNA.out.reads

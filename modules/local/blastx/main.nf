@@ -12,9 +12,9 @@ process BLASTX {
     val evalue_cutoff
 
     output:
-    tuple val(meta), path("*.blast_hits.txt")  , emit: blast_hits
-    tuple val(meta), path("*.removed_ids.txt")     , emit: removed_ids
-    path "versions.yml"                        , emit: versions
+    tuple val(meta), path("*.blast_hits.txt")       , emit: blast_hits
+    tuple val(meta), path("*.removed_ids.txt")      , emit: removed_ids
+    path "versions.yml"                             , emit: versions
 
     when:
     task.ext.when == null || task.ext.when

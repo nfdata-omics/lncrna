@@ -64,7 +64,7 @@ workflow LNCRNA {
 
     main:
 
-    ch_versions = channel.empty()
+    //ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
 
     // ==========================================
@@ -87,7 +87,8 @@ workflow LNCRNA {
         params.skip_trimming,
         params.skip_umi_extract,
         !salmon_index_available,
-        !params.sortmerna_index && params.remove_ribo_rna,
+        !params.sortmerna_index,
+        params.remove_ribo_rna,
         params.trimmer,
         params.min_trimmed_reads,
         params.save_trimmed,
@@ -101,7 +102,7 @@ workflow LNCRNA {
     )
 
     ch_multiqc_files                  = ch_multiqc_files.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.multiqc_files)
-    ch_versions                       = ch_versions.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.versions)
+    //ch_versions                       = ch_versions.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.versions)
     ch_strand_inferred_filtered_fastq = FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.reads
     ch_trim_read_count                = FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.trim_read_count
 
@@ -115,11 +116,11 @@ workflow LNCRNA {
     // SUBWORKFLOW: Alignment with STAR and gene/transcript quantification with Salmon
     // ==========================================
 
-    ch_genome_bam          = Channel.empty()
-    ch_genome_bam_index    = Channel.empty()
-    ch_star_log            = Channel.empty()
-    ch_unaligned_sequences = Channel.empty()
-    ch_transcriptome_bam   = Channel.empty()
+    ch_genome_bam          = channel.empty()
+    ch_genome_bam_index    = channel.empty()
+    ch_star_log            = channel.empty()
+    ch_unaligned_sequences = channel.empty()
+    ch_transcriptome_bam   = channel.empty()
 
     if (!params.skip_alignment && params.aligner == 'star') {
         // Check if an AWS iGenome has been provided to use the appropriate version of STAR
@@ -145,7 +146,7 @@ workflow LNCRNA {
         ch_genome_bam_index        = FASTQ_ALIGN_STAR.out.bai
         ch_transcriptome_bam       = FASTQ_ALIGN_STAR.out.bam_transcript
         ch_transcriptome_bai       = FASTQ_ALIGN_STAR.out.bai_transcript
-        ch_versions                = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
+        //ch_versions                = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
 
         ch_multiqc_files = ch_multiqc_files
             .mix(FASTQ_ALIGN_STAR.out.stats.collect{it[1]})
@@ -156,7 +157,7 @@ workflow LNCRNA {
         if (params.bam_csi_index) {
             ch_genome_bam_index = FASTQ_ALIGN_STAR.out.csi
         }
-        ch_versions = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
+        //ch_versions = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
 
         //
         // Remove duplicate reads from BAM file based on UMIs
@@ -176,7 +177,7 @@ workflow LNCRNA {
             ch_genome_bam        = BAM_DEDUP_UMI_STAR.out.bam
             ch_transcriptome_bam = BAM_DEDUP_UMI_STAR.out.transcriptome_bam
             ch_genome_bam_index  = BAM_DEDUP_UMI_STAR.out.bai
-            ch_versions          = ch_versions.mix(BAM_DEDUP_UMI_STAR.out.versions)
+            //ch_versions          = ch_versions.mix(BAM_DEDUP_UMI_STAR.out.versions)
 
             ch_multiqc_files = ch_multiqc_files
                 .mix(BAM_DEDUP_UMI_STAR.out.multiqc_files)
@@ -210,7 +211,7 @@ workflow LNCRNA {
         if (params.bam_csi_index) {
             ch_genome_bam_index = FASTQ_ALIGN_HISAT2.out.csi
         }
-        ch_versions = ch_versions.mix(FASTQ_ALIGN_HISAT2.out.versions)
+        //ch_versions = ch_versions.mix(FASTQ_ALIGN_HISAT2.out.versions)
 
         //
         // Remove duplicate reads from BAM file based on UMIs
@@ -230,7 +231,7 @@ workflow LNCRNA {
 
             ch_genome_bam        = BAM_DEDUP_UMI_HISAT2.out.bam
             ch_genome_bam_index  = BAM_DEDUP_UMI_HISAT2.out.bai
-            ch_versions          = ch_versions.mix(BAM_DEDUP_UMI_HISAT2.out.versions)
+            //ch_versions          = ch_versions.mix(BAM_DEDUP_UMI_HISAT2.out.versions)
 
             ch_multiqc_files = ch_multiqc_files
                 .mix(BAM_DEDUP_UMI_HISAT2.out.multiqc_files)
@@ -295,7 +296,7 @@ workflow LNCRNA {
     ch_lncrna_candidates_fa = STRINGTIE_WORKFLOW.out.lncrna_fasta
     ch_gffcompare_annotated = STRINGTIE_WORKFLOW.out.gffcompare_annotated
     tmap = STRINGTIE_WORKFLOW.out.tmap
-    ch_versions = ch_versions.mix(STRINGTIE_WORKFLOW.out.versions)
+    //ch_versions = ch_versions.mix(STRINGTIE_WORKFLOW.out.versions)
 
     // ==========================================
     // CODING POTENTIAL AND NOVEL LNCRNAS
@@ -313,7 +314,7 @@ workflow LNCRNA {
     validated_lncrnas_gtf   = IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf
     ch_cpat_hexamer         = IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
     ch_cpat_logit           = IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
-    ch_versions = ch_versions.mix(IDENTIFY_NOVEL_LNCRNA.out.versions)
+    //ch_versions = ch_versions.mix(IDENTIFY_NOVEL_LNCRNA.out.versions)
 
     // ==========================================
     // SUMMARY AND CLASSIFICATION OF LNCRNAS
@@ -332,7 +333,7 @@ workflow LNCRNA {
     ch_lncrna_gtf               = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_gtf    // - only lncRNA
     ch_protein_fasta            = SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta // - only proteins
     ch_lncrna_classification    = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
-    ch_versions                 = ch_versions.mix(SUMMARY_AND_CLASSIFY_LNCRNA.out.versions)
+    //ch_versions                 = ch_versions.mix(SUMMARY_AND_CLASSIFY_LNCRNA.out.versions)
 
     // ==========================================
     // Evaluate final lncRNAs (re-run CPAT + statistics)
@@ -347,7 +348,7 @@ workflow LNCRNA {
         ch_cpat_logit               // CPAT Model
     )
 
-    ch_versions = ch_versions.mix(EVALUATE_FINAL_LNCRNA.out.versions)
+    //ch_versions = ch_versions.mix(EVALUATE_FINAL_LNCRNA.out.versions)
     //ch_final_report = EVALUATE_FINAL_LNCRNA.out.final_stats_report
     //ch_final_summary = EVALUATE_FINAL_LNCRNA.out.final_stats_summary
     ch_cpat_lncrna_validation = EVALUATE_FINAL_LNCRNA.out.cpat_lncrna_results
@@ -365,7 +366,7 @@ workflow LNCRNA {
         params.counts_method ?: 'featurecounts'     // method
     )
     ch_counts = QUANTIFY_EXPRESSION.out.counts
-    ch_versions = ch_versions.mix(QUANTIFY_EXPRESSION.out.versions)
+    //ch_versions = ch_versions.mix(QUANTIFY_EXPRESSION.out.versions)
 
     //
     // Count Matrix
@@ -391,7 +392,7 @@ workflow LNCRNA {
         }
 
         QUANTIFY_PSEUDO_ALIGNMENT (
-            Channel.of([ [:], file(params.input, checkIfExists: true) ]),
+            channel.of([ [:], file(params.input, checkIfExists: true) ]),
             ch_strand_inferred_filtered_fastq,
             ch_pseudo_index,
             ch_transcript_fasta,
@@ -408,7 +409,7 @@ workflow LNCRNA {
         ch_lncrna_gene_counts = QUANTIFY_PSEUDO_ALIGNMENT.out.counts_gene_length_scaled
         ch_lncrna_tpm = QUANTIFY_PSEUDO_ALIGNMENT.out.tpm_gene
         ch_multiqc_files = ch_multiqc_files.mix(QUANTIFY_PSEUDO_ALIGNMENT.out.multiqc.collect{it[1]})
-        ch_versions = ch_versions.mix(QUANTIFY_PSEUDO_ALIGNMENT.out.versions)
+        //ch_versions = ch_versions.mix(QUANTIFY_PSEUDO_ALIGNMENT.out.versions)
     }
 
     // ==========================================
@@ -440,15 +441,15 @@ workflow LNCRNA {
     //
     ch_de_results_for_report = params.design_file && !params.skip_differential_expression ?
         ch_de_results.map { meta, results -> results } :
-        Channel.empty()
+        channel.empty()
     ch_de_plots_for_report = params.design_file && !params.skip_differential_expression ?
-        Channel.of(
+        channel.of(
             ch_ma_plot,
             ch_volcano_plot,
             ch_pca_plot,
             ch_heatmap
         ).collect() :
-        Channel.empty()
+        channel.empty()
     GENERATE_LNCRNA_REPORT (
         ch_de_results_for_report.ifEmpty(file("$projectDir/assets/NO_FILE")),                // DE results (opcional)
         ch_de_plots_for_report.ifEmpty(file("$projectDir/assets/NO_FILE")),                  // DE plots (opcional)
@@ -533,7 +534,7 @@ workflow LNCRNA {
     )
 
     emit:multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
-    versions       = ch_versions                 // channel: [ path(versions.yml) ]
+    versions            = ch_versions                 // channel: [ path(versions.yml) ]
 
 }
 

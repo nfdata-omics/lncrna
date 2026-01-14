@@ -18,7 +18,8 @@ include { UNTAR as UNTAR_SALMON_INDEX       } from '../../../modules/nf-core/unt
 include { UNTAR as UNTAR_KALLISTO_INDEX     } from '../../../modules/nf-core/untar'
 
 include { CUSTOM_CATADDITIONALFASTA         } from '../../../modules/nf-core/custom/catadditionalfasta'
-include { CUSTOM_GETCHROMSIZES              } from '../../../modules/nf-core/custom/getchromsizes'
+//include { CUSTOM_GETCHROMSIZES              } from '../../../modules/nf-core/custom/getchromsizes'
+include { SAMTOOLS_FAIDX                    } from '../../../modules/nf-core/samtools/faidx/main'
 include { GFFREAD                           } from '../../../modules/nf-core/gffread'
 include { GFFREAD as FASTA_EXTRACT_TRANSCRIPTS } from '../../../modules/nf-core/gffread'
 include { BBMAP_BBSPLIT                     } from '../../../modules/nf-core/bbmap/bbsplit'
@@ -235,10 +236,19 @@ workflow PREPARE_GENOME {
     //
     // Create chromosome sizes file
     //
-    CUSTOM_GETCHROMSIZES ( ch_fasta.map { [ [:], it ] } )
-    ch_fai         = CUSTOM_GETCHROMSIZES.out.fai.map { it[1] }
-    ch_chrom_sizes = CUSTOM_GETCHROMSIZES.out.sizes.map { it[1] }
-    ch_versions    = ch_versions.mix(CUSTOM_GETCHROMSIZES.out.versions)
+    // CUSTOM_GETCHROMSIZES ( ch_fasta.map { [ [:], it ] } )
+    // ch_fai         = CUSTOM_GETCHROMSIZES.out.fai.map { it[1] }
+    // ch_chrom_sizes = CUSTOM_GETCHROMSIZES.out.sizes.map { it[1] }
+    // ch_versions    = ch_versions.mix(CUSTOM_GETCHROMSIZES.out.versions)
+
+    SAMTOOLS_FAIDX (
+    ch_fasta.map { [ [:], it ] },  // [meta, fasta]
+    [[],[]],                       // [meta2, fai] - empty for new index
+    true                           // get_sizes = true (generates .sizes file)
+    )
+    ch_fai         = SAMTOOLS_FAIDX.out.fai.map { it[1] }
+    ch_chrom_sizes = SAMTOOLS_FAIDX.out.sizes.map { it[1] }
+    ch_versions    = ch_versions.mix(SAMTOOLS_FAIDX.out.versions)
 
     //
     // Get list of indices that need to be created
