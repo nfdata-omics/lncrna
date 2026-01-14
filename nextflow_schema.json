@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://raw.githubusercontent.com/nfdata-omics/lncrna/master/nextflow_schema.json",
     "title": "nfdata-omics/lncrna pipeline parameters",
-    "description": "Pipeline for the analysis of long non-coding RNAs",
+    "description": "A Nextflow-based pipeline for comprehensive analyses of long non-coding RNAs from RNA-seq datasets",
     "type": "object",
     "$defs": {
         "input_output_options": {
@@ -65,6 +65,72 @@
                     "help_text": "This parameter is *mandatory* if `--genome` is not specified. If you don't have a BWA index available this will be generated for you automatically. Combine with `--save_reference` to save BWA index for future runs.",
                     "fa_icon": "far fa-file-code"
                 },
+                "gtf": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "text/plain",
+                    "pattern": "^\\S+\\.gtf(\\.gz)?$",
+                    "description": "Path to GTF annotation file.",
+                    "fa_icon": "fas fa-code-branch",
+                    "help_text": "This parameter is mandatory if `--genome` is not specified.",
+                    "errorMessage": "The GTF file must have a .gtf or .gtf.gz extension, must not contain spaces, and must exist."
+                },
+                "gff": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "text/plain",
+                    "pattern": "^\\S+\\.gff(\\.gz)?$",
+                    "fa_icon": "fas fa-code-branch",
+                    "description": "Path to GFF3 annotation file.",
+                    "help_text": "This parameter must be specified if neither `--genome` nor `--gtf` is provided.",
+                    "errorMessage": "The GFF file must have a .gff or .gff.gz extension, must not contain spaces, and must exist."
+                },
+                "ncrna_fasta": {
+                    "type": "string",
+                    "fa_icon": "far fa-file-code",
+                    "pattern": "^\\S+\\.fn?a(sta)?(\\.gz)?$",
+                    "format": "file-path",
+                    "mimetype": "plain text",
+                    "help_text": "Optional Path to ncRNAs FASTA file.",
+                    "description": "Path to ncRNAs FASTA file."
+                },
+                "transcript_fasta": {
+                    "type": "string",
+                    "fa_icon": "far fa-file-code",
+                    "hidden": true
+                },
+                "additional_fasta": {
+                    "type": "string",
+                    "fa_icon": "far fa-file-code",
+                    "hidden": true
+                },
+                "gene_bed": {
+                    "type": "string",
+                    "format": "file-path",
+                    "mimetype": "plain text",
+                    "help_text": "gene BED annotation file or create from GTF if required. (Optional)\n",
+                    "pattern": "^\\S+\\.bed?(\\.gz)?$",
+                    "description": "Path to Gene BED file",
+                    "hidden": true
+                },
+                "gtf_extra_attributes": {
+                    "type": "string",
+                    "default": "gene_name",
+                    "hidden": true
+                },
+                "gtf_group_features": {
+                    "type": "string",
+                    "default": "gene_id",
+                    "hidden": true
+                },
+                "gencode": {
+                    "type": "boolean"
+                },
+                "splicesites": {
+                    "type": "string"
+                },
                 "igenomes_ignore": {
                     "type": "boolean",
                     "description": "Do not load the iGenomes reference config.",
@@ -79,6 +145,386 @@
                     "fa_icon": "fas fa-ban",
                     "hidden": true,
                     "default": "s3://ngi-igenomes/igenomes/"
+                }
+            },
+            "required": ["fasta", "gtf"]
+        },
+        "counting_options": {
+            "title": "Counting options",
+            "type": "object",
+            "description": "Options for read counting",
+            "properties": {
+                "counts": {
+                    "type": "string",
+                    "default": "featurecounts",
+                    "description": "Counting method to use",
+                    "enum": ["featurecounts", "htseq", "kallisto", "salmon"],
+                    "help_text": "Choose between 'featurecounts' (default) or 'htseq' for read counting."
+                },
+                "featurecounts_group_type": {
+                    "type": "string",
+                    "default": "gene_biotype"
+                },
+                "featurecounts_feature_type": {
+                    "type": "string",
+                    "default": "exon"
+                }
+            },
+            "fa_icon": "fas fa-calculator"
+        },
+        "bbsplit_ribosomal_rrna": {
+            "title": "BBsplit / Ribosomal rRNA",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "bbsplit_fasta_list": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "text/plain",
+                    "fa_icon": "fas fa-list-alt",
+                    "description": "Path to comma-separated file containing a list of reference genomes to filter reads against with BBSplit. You have to also explicitly set `--skip_bbsplit false` if you want to use BBSplit.",
+                    "help_text": "The file should contain 2 columns: short name and full path to reference genome(s), for example:\n```\nmm10,/path/to/mm10.fa\necoli,/path/to/ecoli.fa\n```"
+                },
+                "save_bbsplit_reads": {
+                    "type": "boolean"
+                },
+                "ribo_database_manifest": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "text/plain",
+                    "fa_icon": "fas fa-database",
+                    "default": "${projectDir}/workflows/lncpipe/assets/rrna-db-defaults.txt",
+                    "description": "Text file containing paths to fasta files (one per line) that will be used to create the database for SortMeRNA.",
+                    "help_text": "By default, [rRNA databases](https://github.com/biocore/sortmerna/tree/master/data/rRNA_databases) defined in the SortMeRNA GitHub repo are used. You can see an example in the pipeline Github repository in `assets/rrna-default-dbs.txt`.\nPlease note that commercial/non-academic entities require [`licensing for SILVA`](https://www.arb-silva.de/silva-license-information) for these default databases."
+                },
+                "remove_ribo_rna": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-trash-alt",
+                    "description": "Enable the removal of reads derived from ribosomal RNA using SortMeRNA.",
+                    "help_text": "Any patterns found in sequences defined by the `--ribo_database_manifest` parameter will be used for filtering."
+                },
+                "save_non_ribo_reads": {
+                    "type": "boolean"
+                },
+                "bbsplit_index": {
+                    "type": "string",
+                    "format": "path",
+                    "exists": true,
+                    "fa_icon": "fas fa-bezier-curve",
+                    "description": "Path to directory or tar.gz archive for pre-built BBSplit index.",
+                    "help_text": "The BBSplit index must be built at least once with this pipeline. Use `--save_reference` to save the index, which can then be provided via `--bbsplit_index` for future runs."
+                },
+                "sortmerna_index": {
+                    "type": "string",
+                    "format": "path",
+                    "exists": true,
+                    "fa_icon": "fas fa-bezier-curve",
+                    "description": "Path to directory or tar.gz archive for pre-built sortmerna index.",
+                    "help_text": "The SortMeRNA index must be built at least once with this pipeline. Use `--save_reference` to save the index, which can then be provided via `--sortmerna_index` for future runs."
+                }
+            }
+        },
+        "umis": {
+            "title": "UMIs",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "umi_dedup_tool": {
+                    "type": "string",
+                    "default": "umitools"
+                },
+                "with_umi": {
+                    "type": "boolean"
+                },
+                "umitools_dedup_stats": {
+                    "type": "boolean"
+                },
+                "umitools_bc_pattern2": {
+                    "type": "string"
+                },
+                "umitools_grouping_method": {
+                    "type": "string",
+                    "default": "directional"
+                },
+                "umitools_bc_pattern": {
+                    "type": "string"
+                },
+                "umitools_umi_separator": {
+                    "type": "string"
+                },
+                "save_umi_intermeds": {
+                    "type": "boolean"
+                },
+                "umi_discard_read": {
+                    "type": "string"
+                },
+                "umitools_extract_method": {
+                    "type": "string",
+                    "default": "string"
+                }
+            }
+        },
+        "trimming": {
+            "title": "Trimming",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "trimmer": {
+                    "type": "string",
+                    "default": "trimgalore"
+                },
+                "min_trimmed_reads": {
+                    "type": "integer",
+                    "default": 10000
+                },
+                "save_trimmed": {
+                    "type": "boolean"
+                },
+                "extra_trimgalore_args": {
+                    "type": "string"
+                },
+                "extra_fastp_args": {
+                    "type": "string"
+                }
+            }
+        },
+        "cpat_pathogenicity": {
+            "title": "CPAT / Pathogenicity",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "cpat_hexamer": {
+                    "type": "string"
+                },
+                "cpat_logit_model": {
+                    "type": "string"
+                },
+                "feelnc_mrna_ref": {
+                    "type": "string"
+                }
+            }
+        },
+        "differential_expression": {
+            "title": "Differential Expression",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "de_method": {
+                    "type": "string",
+                    "default": "DESeq2"
+                },
+                "padj_cutoff": {
+                    "type": "number",
+                    "default": 0.05
+                },
+                "design": {
+                    "type": "string"
+                },
+                "lfc_cutoff": {
+                    "type": "integer",
+                    "default": 1
+                }
+            }
+        },
+        "blast": {
+            "title": "BLAST",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "blast_evalue": {
+                    "type": "number",
+                    "default": 1e-5
+                },
+                "blast_pident": {
+                    "type": "integer",
+                    "default": 80
+                },
+                "blast_qcov": {
+                    "type": "integer",
+                    "default": 50
+                },
+                "blast_filter": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        },
+        "filtering_qc": {
+            "title": "Filtering QC",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "validate_scaffolds": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "filter_lncrna_gtf": {
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        },
+        "mapping": {
+            "title": "Mapping",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "hisat2_index": {
+                    "type": "string",
+                    "hidden": true
+                },
+                "salmon_index": {
+                    "type": "string",
+                    "hidden": true
+                },
+                "kallisto_index": {
+                    "type": "string",
+                    "hidden": true
+                },
+                "bam_csi_index": {
+                    "type": "boolean",
+                    "hidden": true
+                },
+                "aligner": {
+                    "type": "string",
+                    "default": "star"
+                },
+                "pseudo_aligner": {
+                    "type": "string",
+                    "default": "salmon"
+                },
+                "pseudo_aligner_kmer_size": {
+                    "type": "integer",
+                    "default": 31
+                },
+                "kallisto_quant_fraglen": {
+                    "type": "integer",
+                    "default": 200
+                },
+                "star_ignore_sjdbgtf": {
+                    "type": "boolean"
+                },
+                "seq_center": {
+                    "type": "string"
+                },
+                "kallisto_quant_fraglen_sd": {
+                    "type": "integer",
+                    "default": 200
+                },
+                "star_index": {
+                    "type": "string",
+                    "hidden": true
+                },
+                "save_unaligned": {
+                    "type": "boolean"
+                },
+                "extra_star_align_args": {
+                    "type": "string"
+                },
+                "stranded_threshold": {
+                    "type": "number",
+                    "default": 0.8
+                },
+                "unstranded_threshold": {
+                    "type": "number",
+                    "default": 0.1
+                },
+                "salmon_quant_libtype": {
+                    "type": "string"
+                },
+                "hisat2_build_memory": {
+                    "type": "string",
+                    "default": "200.GB"
+                },
+                "stringtie_ignore_gtf": {
+                    "type": "boolean"
+                },
+                "extra_salmon_quant_args": {
+                    "type": "string"
+                },
+                "min_mapped_reads": {
+                    "type": "integer",
+                    "default": 5
+                },
+                "extra_kallisto_quant_args": {
+                    "type": "string"
+                },
+                "save_align_intermeds": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "lncrna_identification": {
+            "title": "lncRNA identification",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "min_transcript_length": {
+                    "type": "integer",
+                    "default": 200
+                },
+                "min_exons": {
+                    "type": "integer",
+                    "default": 2
+                },
+                "consensus_mode": {
+                    "type": "string",
+                    "default": "majority",
+                    "description": "strict, majority, lenient"
+                }
+            }
+        },
+        "skip_process": {
+            "title": "skip process",
+            "type": "object",
+            "description": "",
+            "default": "",
+            "properties": {
+                "skip_gtf_filter": {
+                    "type": "boolean"
+                },
+                "skip_bbsplit": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "skip_pseudo_alignment": {
+                    "type": "boolean"
+                },
+                "skip_umi_extract": {
+                    "type": "boolean"
+                },
+                "skip_alignment": {
+                    "type": "boolean"
+                },
+                "skip_trimming": {
+                    "type": "boolean"
+                },
+                "skip_fastqc": {
+                    "type": "boolean"
+                },
+                "skip_sortmerna": {
+                    "type": "boolean",
+                    "default": true
+                },
+                "skip_markduplicates": {
+                    "type": "boolean"
+                },
+                "skip_differential_expression": {
+                    "type": "boolean"
+                },
+                "skip_qc": {
+                    "type": "boolean"
                 }
             }
         },
@@ -245,13 +691,46 @@
             "$ref": "#/$defs/input_output_options"
         },
         {
-            "$ref": "#/$defs/reference_genome_options"
-        },
-        {
             "$ref": "#/$defs/institutional_config_options"
         },
         {
+            "$ref": "#/$defs/counting_options"
+        },
+        {
+            "$ref": "#/$defs/bbsplit_ribosomal_rrna"
+        },
+        {
+            "$ref": "#/$defs/umis"
+        },
+        {
+            "$ref": "#/$defs/trimming"
+        },
+        {
+            "$ref": "#/$defs/cpat_pathogenicity"
+        },
+        {
+            "$ref": "#/$defs/differential_expression"
+        },
+        {
+            "$ref": "#/$defs/blast"
+        },
+        {
+            "$ref": "#/$defs/filtering_qc"
+        },
+        {
+            "$ref": "#/$defs/mapping"
+        },
+        {
             "$ref": "#/$defs/generic_options"
+        },
+        {
+            "$ref": "#/$defs/lncrna_identification"
+        },
+        {
+            "$ref": "#/$defs/skip_process"
+        },
+        {
+            "$ref": "#/$defs/reference_genome_options"
         }
     ]
 }

@@ -3,12 +3,32 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { FASTQC                 } from '../modules/nf-core/fastqc/main'
-include { MULTIQC                } from '../modules/nf-core/multiqc/main'
-include { paramsSummaryMap       } from 'plugin/nf-schema'
-include { paramsSummaryMultiqc   } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_lncrna_pipeline'
+include { MULTIQC                               } from '../modules/nf-core/multiqc/main'
+include { paramsSummaryMap                      } from 'plugin/nf-schema'
+include { paramsSummaryMultiqc                  } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { softwareVersionsToYAML                } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { methodsDescriptionText                } from '../subworkflows/local/utils_nfcore_lncrna_pipeline'
+include { samplesheetToList                     } from 'plugin/nf-schema'
+
+//
+// SUBWORKFLOWS
+//
+include { FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS  } from '../subworkflows/nf-core/fastq_qc_trim_filter_setstrandedness'
+include { FASTQ_ALIGN_STAR                      } from '../subworkflows/nf-core/fastq_align_star/main'
+include { FASTQ_ALIGN_HISAT2                    } from '../subworkflows/nf-core/fastq_align_hisat2'
+include { BAM_DEDUP_UMI as BAM_DEDUP_UMI_STAR   } from '../subworkflows/nf-core/bam_dedup_umi'
+include { BAM_DEDUP_UMI as BAM_DEDUP_UMI_HISAT2 } from '../subworkflows/nf-core/bam_dedup_umi'
+include { SUBREAD_FEATURECOUNTS                 } from '../modules/nf-core/subread/featurecounts/main'
+include { HTSEQ_COUNT                           } from '../modules/nf-core/htseq/count/main'
+include { STRINGTIE_WORKFLOW                    } from '../subworkflows/local/stringtie'
+include { IDENTIFY_NOVEL_LNCRNA                 } from '../subworkflows/local/identify_novel_lncrna'
+include { SUMMARY_AND_CLASSIFY_LNCRNA           } from '../subworkflows/local/summary_and_classify_lncrna'
+include { EVALUATE_FINAL_LNCRNA                 } from '../subworkflows/local/evaluate_final_lncrna'
+include { QUANTIFY_EXPRESSION                   } from '../subworkflows/local/quantify_expression'
+include { GENERATE_COUNT_MATRIX                 } from '../modules/local/generate_count_matrix'
+include { DIFFERENTIAL_EXPRESSION               } from '../modules/local/differential_expression'
+include { QUANTIFY_PSEUDO_ALIGNMENT             } from '../subworkflows/nf-core/quantify_pseudo_alignment'
+include { GENERATE_LNCRNA_REPORT                } from '../modules/local/generate_lncrna_report'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -20,18 +40,427 @@ workflow LNCRNA {
 
     take:
     ch_samplesheet // channel: samplesheet read in from --input
+    ch_versions             // channel: [ path(versions.yml) ]
+    ch_fasta                // channel: path(genome.fasta)
+    ch_gtf                  // channel: path(genome.gtf)
+    ch_fai                  // channel: path(genome.fai)
+    ch_chrom_sizes          // channel: path(genome.sizes)
+    ch_gene_bed             // channel: path(gene.bed)
+    ch_transcript_fasta     // channel: path(transcript.fasta)
+    ch_star_index           // channel: path(star/index/)
+    ch_hisat2_index         // channel: path(hisat2/index/)
+    ch_salmon_index         // channel: path(salmon/index/)
+    ch_kallisto_index       // channel: [ meta, path(kallisto/index/) ]
+    ch_bbsplit_index        // channel: path(bbsplit/index/)
+    ch_ribo_db              // channel: path(sortmerna_fasta_list)
+    ch_sortmerna_index      // channel: path(sortmerna/index/)
+    ch_splicesites          // channel: path(genome.splicesites.txt)
+    ch_cds_ref              // channel: path(cds.gf)
+    ch_lncrna_ref           // channel: path(lncrna.gtf)
+    ch_known_lncrna_gtf     // channel: path(gtf_filtered_lncrna.gtf)
+    lncrna_fasta
+    blast_protein_database  // channel: path(lblast_protein_database)
+    make_sortmerna_index    // boolean: Whether to create an index before running sortmerna
+
     main:
 
     ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
-    //
-    // MODULE: Run FastQC
-    //
-    FASTQC (
-        ch_samplesheet
+
+    // ==========================================
+    // SUBWORKFLOW: FASTQ preprocessing subworkflow
+    // ==========================================
+
+    salmon_index_available = params.salmon_index || (!params.skip_pseudo_alignment && params.pseudo_aligner == 'salmon')
+
+    FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS (
+        ch_samplesheet,
+        ch_fasta,
+        ch_transcript_fasta,
+        ch_gtf,
+        ch_salmon_index,
+        ch_sortmerna_index,
+        ch_bbsplit_index,
+        ch_ribo_db,
+        params.skip_bbsplit,
+        params.skip_fastqc || params.skip_qc,
+        params.skip_trimming,
+        params.skip_umi_extract,
+        !salmon_index_available,
+        !params.sortmerna_index && params.remove_ribo_rna,
+        params.trimmer,
+        params.min_trimmed_reads,
+        params.save_trimmed,
+        params.remove_ribo_rna,
+        params.with_umi,
+        params.umi_discard_read,
+        params.stranded_threshold,
+        params.unstranded_threshold,
+        params.skip_linting,
+        false
     )
-    ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect{it[1]})
-    ch_versions = ch_versions.mix(FASTQC.out.versions.first())
+
+    ch_multiqc_files                  = ch_multiqc_files.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.multiqc_files)
+    ch_versions                       = ch_versions.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.versions)
+    ch_strand_inferred_filtered_fastq = FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.reads
+    ch_trim_read_count                = FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.trim_read_count
+
+    ch_trim_status = ch_trim_read_count
+        .map {
+            meta, num_reads ->
+                return [ meta.id, num_reads > params.min_trimmed_reads.toFloat() ]
+        }
+
+    // ==========================================
+    // SUBWORKFLOW: Alignment with STAR and gene/transcript quantification with Salmon
+    // ==========================================
+
+    ch_genome_bam          = Channel.empty()
+    ch_genome_bam_index    = Channel.empty()
+    ch_star_log            = Channel.empty()
+    ch_unaligned_sequences = Channel.empty()
+    ch_transcriptome_bam   = Channel.empty()
+
+    if (!params.skip_alignment && params.aligner == 'star') {
+        // Check if an AWS iGenome has been provided to use the appropriate version of STAR
+        def is_aws_igenome = false
+        if (params.fasta && params.gtf) {
+            if ((file(params.fasta).getName() - '.gz' == 'genome.fa') && (file(params.gtf).getName() - '.gz' == 'genes.gtf')) {
+                is_aws_igenome = true
+            }
+        }
+
+        FASTQ_ALIGN_STAR(
+            FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.reads,
+            ch_star_index.map { [ [:], it ] },
+            ch_gtf.map { [ [:], it ] },
+            params.star_ignore_sjdbgtf,
+            '',
+            params.seq_center ?: '',
+            ch_fasta.map { [ [:], it ] },
+            ch_transcript_fasta.map { [ [:], it ] }
+        )
+
+        ch_genome_bam              = FASTQ_ALIGN_STAR.out.bam
+        ch_genome_bam_index        = FASTQ_ALIGN_STAR.out.bai
+        ch_transcriptome_bam       = FASTQ_ALIGN_STAR.out.bam_transcript
+        ch_transcriptome_bai       = FASTQ_ALIGN_STAR.out.bai_transcript
+        ch_versions                = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
+
+        ch_multiqc_files = ch_multiqc_files
+            .mix(FASTQ_ALIGN_STAR.out.stats.collect{it[1]})
+            .mix(FASTQ_ALIGN_STAR.out.flagstat.collect{it[1]})
+            .mix(FASTQ_ALIGN_STAR.out.idxstats.collect{it[1]})
+            .mix(FASTQ_ALIGN_STAR.out.log_final.collect{it[1]})
+
+        if (params.bam_csi_index) {
+            ch_genome_bam_index = FASTQ_ALIGN_STAR.out.csi
+        }
+        ch_versions = ch_versions.mix(FASTQ_ALIGN_STAR.out.versions)
+
+        //
+        // Remove duplicate reads from BAM file based on UMIs
+        //
+        if (params.with_umi) {
+
+            BAM_DEDUP_UMI_STAR(
+                ch_genome_bam.join(ch_genome_bam_index, by: [0]),
+                ch_fasta.map { [ [:], it ] },
+                params.umi_dedup_tool,
+                params.umitools_dedup_stats,
+                params.bam_csi_index,
+                ch_transcriptome_bam,
+                ch_transcript_fasta.map { [ [:], it ] }
+            )
+
+            ch_genome_bam        = BAM_DEDUP_UMI_STAR.out.bam
+            ch_transcriptome_bam = BAM_DEDUP_UMI_STAR.out.transcriptome_bam
+            ch_genome_bam_index  = BAM_DEDUP_UMI_STAR.out.bai
+            ch_versions          = ch_versions.mix(BAM_DEDUP_UMI_STAR.out.versions)
+
+            ch_multiqc_files = ch_multiqc_files
+                .mix(BAM_DEDUP_UMI_STAR.out.multiqc_files)
+
+        } else {
+            // The deduplicated stats should take priority for MultiQC
+
+            ch_multiqc_files = ch_multiqc_files
+                .mix(FASTQ_ALIGN_STAR.out.stats.collect{it[1]})
+                .mix(FASTQ_ALIGN_STAR.out.flagstat.collect{it[1]})
+                .mix(FASTQ_ALIGN_STAR.out.idxstats.collect{it[1]})
+        }
+
+    }
+
+    // ==========================================
+    // SUBWORKFLOW: Alignment with HISAT2
+    // ==========================================
+    if (!params.skip_alignment && params.aligner == 'hisat2') {
+        FASTQ_ALIGN_HISAT2 (
+            ch_strand_inferred_filtered_fastq,
+            ch_hisat2_index.map { [ [:], it ] },
+            ch_splicesites.map { [ [:], it ] },
+            ch_fasta.map { [ [:], it ] }
+        )
+        ch_genome_bam          = FASTQ_ALIGN_HISAT2.out.bam
+        ch_genome_bam_index    = FASTQ_ALIGN_HISAT2.out.bai
+        ch_unaligned_sequences = FASTQ_ALIGN_HISAT2.out.fastq
+        ch_multiqc_files = ch_multiqc_files.mix(FASTQ_ALIGN_HISAT2.out.summary.collect{it[1]})
+
+        if (params.bam_csi_index) {
+            ch_genome_bam_index = FASTQ_ALIGN_HISAT2.out.csi
+        }
+        ch_versions = ch_versions.mix(FASTQ_ALIGN_HISAT2.out.versions)
+
+        //
+        // Remove duplicate reads from BAM file based on UMIs
+        //
+
+        if (params.with_umi) {
+
+            BAM_DEDUP_UMI_HISAT2(
+                ch_genome_bam.join(ch_genome_bam_index, by: [0]),
+                ch_fasta.map { [ [:], it ] },
+                params.umi_dedup_tool,
+                params.umitools_dedup_stats,
+                params.bam_csi_index,
+                ch_transcriptome_bam,
+                ch_transcript_fasta.map { [ [:], it ] }
+            )
+
+            ch_genome_bam        = BAM_DEDUP_UMI_HISAT2.out.bam
+            ch_genome_bam_index  = BAM_DEDUP_UMI_HISAT2.out.bai
+            ch_versions          = ch_versions.mix(BAM_DEDUP_UMI_HISAT2.out.versions)
+
+            ch_multiqc_files = ch_multiqc_files
+                .mix(BAM_DEDUP_UMI_HISAT2.out.multiqc_files)
+        } else {
+
+            // The deduplicated stats should take priority for MultiQC
+            ch_multiqc_files = ch_multiqc_files
+                .mix(FASTQ_ALIGN_HISAT2.out.stats.collect{it[1]})
+                .mix(FASTQ_ALIGN_HISAT2.out.flagstat.collect{it[1]})
+                .mix(FASTQ_ALIGN_HISAT2.out.idxstats.collect{it[1]})
+        }
+    }
+
+    //
+    // Filter channels to get samples that passed STAR minimum mapping percentage
+    //
+    if (!params.skip_alignment && params.aligner.contains('star')) {
+        ch_star_log
+            .map { meta, align_log -> [ meta ] + getStarPercentMapped(params, align_log) }
+            .set { ch_percent_mapped }
+
+        // Save status for workflow summary
+        ch_map_status = ch_percent_mapped
+            .map {
+                meta, mapped, pass ->
+                    return [ meta.id, pass ]
+            }
+
+        ch_percent_mapped
+            .branch { meta, mapped, pass ->
+                pass: pass
+                    return [ "$meta.id\t$mapped" ]
+                fail: !pass
+                    return [ "$meta.id\t$mapped" ]
+            }
+            .set { ch_pass_fail_mapped }
+
+        ch_pass_fail_mapped
+            .fail
+            .collect()
+            .map {
+                tsv_data ->
+                    def header = ["Sample", "STAR uniquely mapped reads (%)"]
+                    sample_status_header_multiqc.text + multiqcTsvFromList(tsv_data, header)
+            }
+            .set { ch_fail_mapping_multiqc }
+        ch_multiqc_files = ch_multiqc_files.mix(ch_fail_mapping_multiqc.collectFile(name: 'fail_mapped_samples_mqc.tsv'))
+    }
+
+    // ==========================================
+    // Transcript assembly using Stringtie, merge GTFs, filter by classcode and create
+    // FASTA of the filtered GTF
+    // ==========================================
+    STRINGTIE_WORKFLOW (
+        ch_genome_bam,
+        ch_gtf,         // path(gtf) - PREPARE_GENOME.out.gtf
+        ch_fasta,       // path(fasta) - PREPARE_GENOME.out.fasta
+        ch_fai          // path(fai) - PREPARE_GENOME.out.fai
+    )
+    ch_stringtie_merged = STRINGTIE_WORKFLOW.out.stringtie_gtf_merged
+    ch_lncrna_candidates_gtf = STRINGTIE_WORKFLOW.out.lncrna_candidates
+    ch_lncrna_candidates_fa = STRINGTIE_WORKFLOW.out.lncrna_fasta
+    ch_gffcompare_annotated = STRINGTIE_WORKFLOW.out.gffcompare_annotated
+    tmap = STRINGTIE_WORKFLOW.out.tmap
+    ch_versions = ch_versions.mix(STRINGTIE_WORKFLOW.out.versions)
+
+    // ==========================================
+    // CODING POTENTIAL AND NOVEL LNCRNAS
+    // ==========================================
+    IDENTIFY_NOVEL_LNCRNA (
+        tmap,                       // STRINGTIE_WORKFLOW.out.tmap
+        ch_fasta,                   // PREPARE_GENOME.out.fasta
+        ch_lncrna_candidates_gtf,   // STRINGTIE_WORKFLOW.out.lncrna_candidates
+        ch_lncrna_candidates_fa,    // STRINGTIE_WORKFLOW.out.lncrna_fasta
+        ch_cds_ref,                 // PREPARE_GENOME.out.cds_fasta
+        ch_lncrna_ref               // PREPARE_GENOME.out.lncrna_fasta
+        //ch_mrna_ref               // mRNA reference para FEELnc
+    )
+
+    validated_lncrnas_gtf   = IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf
+    ch_cpat_hexamer         = IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
+    ch_cpat_logit           = IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
+    ch_versions = ch_versions.mix(IDENTIFY_NOVEL_LNCRNA.out.versions)
+
+    // ==========================================
+    // SUMMARY AND CLASSIFICATION OF LNCRNAS
+    // ==========================================
+    SUMMARY_AND_CLASSIFY_LNCRNA (
+        validated_lncrnas_gtf,          //IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf
+        ch_known_lncrna_gtf,            //PREPARE_GENOME.out.known_lncrna_gtf // Known lncRNAs reference
+        ch_gtf,                         //PREPARE_GENOME.out.gtf
+        ch_fasta,                       //PREPARE_GENOME.out.fasta
+        blast_protein_database,         //PREPARE_GENOME.out.blast_protein_db
+        lncrna_fasta                    //PREPARE_GENOME.out.lncrna_fasta
+    )
+
+    ch_final_annotation         = SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf     // - lncRNAs + proteins
+    ch_lncrna_fasta             = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_fasta  // - only lncRNA
+    ch_lncrna_gtf               = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_gtf    // - only lncRNA
+    ch_protein_fasta            = SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta // - only proteins
+    ch_lncrna_classification    = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
+    ch_versions                 = ch_versions.mix(SUMMARY_AND_CLASSIFY_LNCRNA.out.versions)
+
+    // ==========================================
+    // Evaluate final lncRNAs (re-run CPAT + statistics)
+    // ==========================================
+    EVALUATE_FINAL_LNCRNA (
+        ch_final_annotation,        // SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf - lncRNAs + proteins
+        ch_lncrna_gtf,              // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_gtf - only lncRNAs
+        ch_lncrna_fasta,            // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_fasta - only lncRNAs
+        ch_protein_fasta,           // SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta - only proteins
+        ch_lncrna_classification,   // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
+        ch_cpat_hexamer,            // CPAT Model
+        ch_cpat_logit               // CPAT Model
+    )
+
+    ch_versions = ch_versions.mix(EVALUATE_FINAL_LNCRNA.out.versions)
+    //ch_final_report = EVALUATE_FINAL_LNCRNA.out.final_stats_report
+    //ch_final_summary = EVALUATE_FINAL_LNCRNA.out.final_stats_summary
+    ch_cpat_lncrna_validation = EVALUATE_FINAL_LNCRNA.out.cpat_lncrna_results
+    ch_cpat_coding_validation = EVALUATE_FINAL_LNCRNA.out.cpat_coding_results
+    //ch_cpat_plot = EVALUATE_FINAL_LNCRNA.out.cpat_plot
+    ch_classification_plot = EVALUATE_FINAL_LNCRNA.out.classification_plot
+
+    // ==========================================
+    // Quantification step (Featurecounts/Htseq)
+    // ==========================================
+    QUANTIFY_EXPRESSION (
+        ch_genome_bam,                                      // BAMs originales
+        ch_genome_bam_index,                                // Índices BAM
+        ch_final_annotation.map { meta, gtf -> gtf },       // GTF con lncRNAs
+        params.counts_method ?: 'featurecounts'     // method
+    )
+    ch_counts = QUANTIFY_EXPRESSION.out.counts
+    ch_versions = ch_versions.mix(QUANTIFY_EXPRESSION.out.versions)
+
+    //
+    // Count Matrix
+    //
+    GENERATE_COUNT_MATRIX (
+        ch_counts.collect { meta, counts -> counts },
+        ch_final_annotation.map { meta, gtf -> gtf },
+        params.counts_method ?: 'featurecounts'
+        )
+    ch_alignment_matrix     = GENERATE_COUNT_MATRIX.out.matrix
+    ch_alignment_gene_info  = GENERATE_COUNT_MATRIX.out.gene_info
+    //ch_lncrna_only_matrix   = GENERATE_COUNT_MATRIX.out.lncrna_matrix //no existe
+
+    // ==========================================
+    // Pseudoalignment and quantification with Salmon (OPCIONAL)
+    // ==========================================
+    if (!params.skip_pseudo_alignment && params.pseudo_aligner) {
+
+        if (params.pseudo_aligner == 'salmon') {
+            ch_pseudo_index = ch_salmon_index
+        } else {
+            ch_pseudo_index = ch_kallisto_index
+        }
+
+        QUANTIFY_PSEUDO_ALIGNMENT (
+            Channel.of([ [:], file(params.input, checkIfExists: true) ]),
+            ch_strand_inferred_filtered_fastq,
+            ch_pseudo_index,
+            ch_transcript_fasta,
+            ch_final_annotation.map { meta, gtf -> gtf },
+            params.gtf_group_features ?: 'gene_id',
+            params.gtf_extra_attributes ?: 'gene_name',
+            params.pseudo_aligner ?: 'salmon',
+            false,
+            params.salmon_quant_libtype ?: '',
+            params.kallisto_quant_fraglen ?: 150,
+            params.kallisto_quant_fraglen_sd ?: 20
+        )
+
+        ch_lncrna_gene_counts = QUANTIFY_PSEUDO_ALIGNMENT.out.counts_gene_length_scaled
+        ch_lncrna_tpm = QUANTIFY_PSEUDO_ALIGNMENT.out.tpm_gene
+        ch_multiqc_files = ch_multiqc_files.mix(QUANTIFY_PSEUDO_ALIGNMENT.out.multiqc.collect{it[1]})
+        ch_versions = ch_versions.mix(QUANTIFY_PSEUDO_ALIGNMENT.out.versions)
+    }
+
+    // ==========================================
+    // Differential expression analysis (CONDICIONAL)
+    // ==========================================
+    if (params.design_file && !params.skip_differential_expression) {
+        ch_design_file = Channel.fromPath(params.design_file, checkIfExists: true)
+        // DE alignment-based
+        DIFFERENTIAL_EXPRESSION (
+            ch_alignment_matrix.map { matrix -> [ ['id': 'alignment'], matrix ] },
+            ch_alignment_gene_info,
+            ch_design_file,
+            params.de_method ?: 'DESeq2'
+        )
+        ch_de_results = DIFFERENTIAL_EXPRESSION.out.results
+        ch_de_normalized = DIFFERENTIAL_EXPRESSION.out.normalized
+        ch_de_dds = DIFFERENTIAL_EXPRESSION.out.dds
+        // Plots
+        ch_ma_plot = DIFFERENTIAL_EXPRESSION.out.ma_plot
+        ch_volcano_plot = DIFFERENTIAL_EXPRESSION.out.volcano
+        ch_pca_plot = DIFFERENTIAL_EXPRESSION.out.pca
+        ch_heatmap = DIFFERENTIAL_EXPRESSION.out.heatmap
+        ch_dispersion_plot = DIFFERENTIAL_EXPRESSION.out.dispersion
+
+        }
+
+    //
+    // MODULE: Generate final report
+    //
+    ch_de_results_for_report = params.design_file && !params.skip_differential_expression ?
+        ch_de_results.map { meta, results -> results } :
+        Channel.empty()
+    ch_de_plots_for_report = params.design_file && !params.skip_differential_expression ?
+        Channel.of(
+            ch_ma_plot,
+            ch_volcano_plot,
+            ch_pca_plot,
+            ch_heatmap
+        ).collect() :
+        Channel.empty()
+    GENERATE_LNCRNA_REPORT (
+        ch_de_results_for_report.ifEmpty(file("$projectDir/assets/NO_FILE")),                // DE results (opcional)
+        ch_de_plots_for_report.ifEmpty(file("$projectDir/assets/NO_FILE")),                  // DE plots (opcional)
+        SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification.map { meta, file -> file },   // Clasificación
+        SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_stats.map { meta, file -> file },            // Stats clasificación
+        EVALUATE_FINAL_LNCRNA.out.cpat_plot,                                                // CPAT comparison
+        ch_alignment_matrix.ifEmpty(file("$projectDir/assets/NO_FILE")),                     // Count summary
+        SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf.map { meta, gtf -> gtf },                 // GTF final
+        SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_gtf                                          // Renamed lncrnas
+    )
+    ch_final_report = GENERATE_LNCRNA_REPORT.out.report
+    ch_pipeline_summary = GENERATE_LNCRNA_REPORT.out.summary
 
     //
     // Collate and save software versions
