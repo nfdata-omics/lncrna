@@ -20,7 +20,7 @@ process FILTER_GTF_BY_CLASSCODE {
 
     script:
     def prefix = task.ext.prefix ?: "${gtf.baseName}"
-    def classcodes = task.ext.args ?: 'i,u,x'  // Default: i, u, x
+    def classcodes = task.ext.args ?: 'i,u,x,j'  // Default: i, u, x, j
     """
     filter_gtf_by_classcode.py \\
         --gtf $gtf \\

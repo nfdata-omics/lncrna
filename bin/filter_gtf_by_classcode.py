@@ -130,6 +130,9 @@ def filter_gtf_by_classcode(gtf_file, output_file, target_classcodes, stats_file
                 written_lines += 1
 
     print(f"Wrote {written_lines} lines to {output_file}", file=sys.stderr)
+    if written_lines == 0:
+        print(f"No transcripts matched target class codes; empty output: {output_file}", file=sys.stderr)
+        sys.exit(2)
 
     # Write statistics
     with open(stats_file, 'w') as stats_out:

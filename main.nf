@@ -72,7 +72,6 @@ workflow NFDATAOMICS_LNCRNA {
         params.gene_bed,
         params.splicesites,
         params.bbsplit_fasta_list,
-        params.ribo_database_manifest,
         params.star_index,
         params.salmon_index,
         params.kallisto_index,
@@ -80,18 +79,19 @@ workflow NFDATAOMICS_LNCRNA {
         params.bbsplit_index,
         params.sortmerna_index,
         params.gencode,
-        params.featurecounts_group_type,
-        params.aligner,
-        params.pseudo_aligner,
-        params.skip_gtf_filter,
-        params.skip_bbsplit,
-        !params.remove_ribo_rna,
-        params.skip_alignment,
-        params.skip_pseudo_alignment,
         params.ncrna_fasta,
         params.validate_scaffolds,
         params.filter_lncrna_gtf,
-        params.skip_sortmerna
+        params.featurecounts_group_type,
+        params.aligner,
+        params.pseudo_aligner,
+        params.ribo_database_manifest,
+        params.skip_gtf_filter,
+        params.skip_bbsplit,
+        params.skip_sortmerna,
+        params.skip_alignment,
+        params.skip_pseudo_alignment,
+        params.remove_ribo_rna
     )
     //ch_versions = ch_versions.mix(PREPARE_GENOME.out.versions)
 
@@ -106,7 +106,7 @@ workflow NFDATAOMICS_LNCRNA {
     //
     // WORKFLOW: Run pipeline
     //
-    ch_samplesheet = Channel.value(file(params.input, checkIfExists: true))
+    ch_samplesheet = samplesheet
 
     LNCRNA (
         samplesheet,

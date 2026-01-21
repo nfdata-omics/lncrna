@@ -224,6 +224,12 @@
                     "fa_icon": "fas fa-bezier-curve",
                     "description": "Path to directory or tar.gz archive for pre-built sortmerna index.",
                     "help_text": "The SortMeRNA index must be built at least once with this pipeline. Use `--save_reference` to save the index, which can then be provided via `--sortmerna_index` for future runs."
+                },
+                "ribo_removal_tool": {
+                    "type": "string",
+                    "default": "sortmerna",
+                    "enum": ["sortmerna", "ribodetector", "bowtie2"],
+                    "description": "Specifies the rRNA removal tool to use"
                 }
             }
         },
@@ -470,6 +476,11 @@
             "description": "",
             "default": "",
             "properties": {
+                "novel_lncrnas": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable the full novel lncRNA discovery branch (StringTie+gffcompare+CPAT/FEELnc/PLEK+summary). When false, run known-only mode."
+                },
                 "min_transcript_length": {
                     "type": "integer",
                     "default": 200

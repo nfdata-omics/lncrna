@@ -16,16 +16,16 @@ process EXTRACT_LNCRNA_SEQUENCES {
 
     script:
     """
-    # Extract lncRNA transcripts
-    gffread -w all_transcripts.fa -g $fasta $gtf
-
-    # Filter to keep only lncRNA biotypes
-    grep -A 1 -E 'transcript_biotype "(lncRNA|lincRNA|antisense|sense_intronic|sense_overlapping)"' \\
-        all_transcripts.fa > lncrna_sequences.fa || true
-
-    # If no lncRNAs found, create empty file
-    if [ ! -s lncrna_sequences.fa ]; then
-        touch lncrna_sequences.fa
+    awk -F'\\t' '(${'$'}3=="transcript") && (${'$'}9 ~ /(transcript_biotype|gene_biotype|gene_type) "(lncRNA|lincRNA|antisense|sense_intronic|sense_overlapping|processed_transcript|non_coding|3prime_overlapping_ncRNA|non_coding_gene)"/) { if (match(${'$'}9, /transcript_id "([^"]+)"/, m)) print m[1] }' $gtf | sort -u > lnc_ids.txt
+    if [ -s lnc_ids.txt ]; then
+        awk 'FNR==NR{ids[${'$'}1]=1; next} { if (match(${'$'}0, /transcript_id "([^"]+)"/, m) && ids[m[1]]) print }' lnc_ids.txt $gtf > lnc.gtf
+    else
+        > lnc.gtf
+    fi
+    if [ -s lnc.gtf ]; then
+        gffread -w lncrna_sequences.fa -g $fasta lnc.gtf
+    else
+        > lncrna_sequences.fa
     fi
 
     cat <<-END_VERSIONS > versions.yml

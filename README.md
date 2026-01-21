@@ -14,52 +14,91 @@
 
 ## Introduction
 
-**nfdata-omics/lncrna** is a bioinformatics pipeline that ...
+**nfdata-omics/lncrna** is a bioinformatics pipeline that processes RNA‑seq data to quantify known lncRNAs and optionally discover novel lncRNAs. It performs FASTQ QC and alignment, transcript assembly and novelty filtering, coding‑potential assessment, genomic‑context classification, and reporting. By default it runs in known‑only mode; enabling the discovery branch adds StringTie+gffcompare+CPAT/FEELnc/PLEK steps and a final evaluation.
 
-<!-- TODO nf-core:
-   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the
-   major pipeline sections and the types of output it produces. You're giving an overview to someone new
-   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction
--->
+- FASTQ QC and optional trimming; optional rRNA removal and filtering
+- Alignment and quantification (STAR or HISAT2)
+- Transcript assembly (StringTie) and merge
+- Annotation with gffcompare; filter candidates by class codes i,u,x,j
+- Convert filtered GTF to FASTA
+- Optional novel branch: length/exon filters, CPAT/FEELnc/PLEK, consensus, filter against known, classification and final merge, evaluation (CPAT re‑run)
+- Final HTML report and aggregated QC (MultiQC)
 
-<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
-     workflows use the "tube map" design for that. See https://nf-co.re/docs/guidelines/graphic_design/workflow_diagrams#examples for examples.   -->
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+<!-- Add a tube map or workflow figure here if desired -->
 
 ## Usage
 
 > [!NOTE]
-> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/usage/introduction#how-to-run-a-pipeline) with `-profile test` before running the workflow on actual data.
+> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set up Nextflow. Test your setup with `-profile test` before running on actual data.
 
-<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.
-     Explain what rows and columns represent. For instance (please edit as appropriate):
-
-First, prepare a samplesheet with your input data that looks as follows:
-
-`samplesheet.csv`:
+Prepare a samplesheet CSV:
 
 ```csv
 sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+CTRL_1,/data/CTRL_1_R1.fastq.gz,/data/CTRL_1_R2.fastq.gz
 ```
 
-Each row represents a fastq file (single-end) or a pair of fastq files (paired end).
-
--->
-
-Now, you can run the pipeline using:
-
-<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->
+Run in known‑only mode (default):
 
 ```bash
-nextflow run nfdata-omics/lncrna \
-   -profile <docker/singularity/.../institute> \
-   --input samplesheet.csv \
-   --outdir <OUTDIR>
+nextflow run main.nf \
+  --input assets/samplesheet.csv \
+  --fasta /path/to/genome.fa \
+  --gtf /path/to/genes.gtf \
+  --outdir /path/to/output \
+  -profile conda \
+  -resume
+```
+
+Enable novel lncRNA discovery:
+
+```bash
+nextflow run main.nf \
+  --input assets/samplesheet.csv \
+  --fasta /path/to/genome.fa \
+  --gtf /path/to/genes.gtf \
+  --outdir /path/to/output_novel \
+  --novel_lncrnas true \
+  -profile conda \
+  -resume
 ```
 
 > [!WARNING]
-> Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
+> Provide pipeline parameters via the CLI or Nextflow `-params-file`. Custom config files (`-c`) can adjust executor and resource configuration but should not define parameters; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
+
+## Key Parameters
+
+- novel_lncrnas: boolean (default: false). Enables the full novel lncRNA discovery branch when true; runs known‑only mode when false.
+- classcodes: gffcompare class codes retained for initial candidate filtering (default: i,u,x,j; configurable).
+- min_transcript_length: minimum transcript length (default: 200 nt).
+- min_exons: minimum number of exons (default: 2).
+- skip_cpat, skip_feelnc, skip_plek: disable specific coding‑potential tools if desired.
+- blast_evalue, blast_pident, blast_qcov, blast_filter: parameters to tune BLAST‑based filtering during classification.
+- counts_method: featurecounts (default) or htseq; optional pseudo‑alignment with Salmon/Kallisto.
+- aligner: STAR (default) or HISAT2; pseudo_aligner: Salmon (default).
+
+## Outputs
+
+- lncrna_gtf_filtering/by_classcode: filtered GTF and classcode stats
+  - _.filtered.gtf, _.classcode_stats.txt
+- lncrna_transcript_filtering/transcripts_length: length‑filtered outputs (novel branch)
+  - _.filtered_length.gtf, _.filtered_length.fa
+- lncrna_transcript_filtering/transcripts_exons: exon‑filtered outputs (novel branch)
+  - _.exon_filtered.gtf, _.exon_filtered.fa, \*.exon_stats.txt
+- lncrna_prediction/cpat: CPAT predictions (novel branch)
+  - \*.cpat.tsv
+- lncrna_prediction/cpat/models: CPAT models when built
+  - hexamer.tsv, logit model (RData)
+- lncrna_prediction/plek and lncrna_prediction/feelnc: tool‑specific outputs (novel branch)
+- lncrna_prediction/combined_predictions: consensus results (novel branch)
+  - final lncRNA _.gtf, _.fasta, summary report
+- lncrna_final_annotation: final combined annotation and splits
+  - _.final_all.gtf, _.final*all.fa, *.lncrna*only.fa, *.protein_only.fa
+- expression/quantification: per‑sample quantification outputs
+- expression/matrix: merged count matrix and gene metadata
+- lncrna_report: final HTML report, summary text, and stats JSON
+  - _.final_report.html, _.summary.txt, \*.stats.json
+- multiqc: aggregated QC report
 
 ## Credits
 

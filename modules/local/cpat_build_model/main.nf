@@ -23,22 +23,34 @@ process CPAT_BUILD_MODEL {
     """
     echo "Building CPAT models from training data..."
 
-    # Build hexamer table
+    coding_count=\$(grep -c '^>' "$coding_fasta" 2>/dev/null || echo 0)
+    noncoding_count=\$(grep -c '^>' "$noncoding_fasta" 2>/dev/null || echo 0)
+    if [ "\$coding_count" -lt 1 ] || [ "\$noncoding_count" -lt 1 ]; then
+        echo "ERROR: CPAT training requires non-empty coding (\$coding_count) and noncoding (\$noncoding_count) FASTA files." >&2
+        exit 1
+    fi
+
     make_hexamer_tab.py \\
         -c $coding_fasta \\
         -n $noncoding_fasta \\
         > ${prefix}.Hexamer.tsv
 
-    # Build logit model
     make_logitModel.py \\
         -c $coding_fasta \\
         -n $noncoding_fasta \\
         -x ${prefix}.Hexamer.tsv \\
         -o ${prefix}.logitModel
 
+    if [ -f ${prefix}.logitModel.logit.RData ]; then
+        mv ${prefix}.logitModel.logit.RData ${prefix}.logitModel.RData
+    fi
+    if [ ! -f ${prefix}.logitModel.RData ]; then
+        exit 1
+    fi
+
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        cpat: \$(cpat.py --version 2>&1 | grep -oP 'CPAT-\\K[0-9.]+' || echo "3.0.5")
+        cpat: \$(cpat.py --version 2>&1 | sed -n 's/.*CPAT-\\([0-9.]*\\).*/\\1/p' | awk 'NF{print;exit} END{print "3.0.5"}')
     END_VERSIONS
     """
 

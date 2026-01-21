@@ -34,6 +34,21 @@ def filter_transcripts_by_length(gtf_file, fasta_file, min_length, output_prefix
     print(f"Filtered {stats['passed']} / {stats['total']} transcripts (>= {min_length} nt)",
           file=sys.stderr)
 
+    if stats['passed'] == 0:
+        with open(f"{output_prefix}.length_filtered.gtf", 'w') as gtf_out:
+            pass
+        with open(f"{output_prefix}.length_filtered.fa", 'w') as fasta_out:
+            pass
+        with open(f"{output_prefix}.length_stats.txt", 'w') as stats_out:
+            stats_out.write("LENGTH FILTERING STATISTICS\n")
+            stats_out.write("=" * 50 + "\n\n")
+            stats_out.write(f"Minimum length threshold: {min_length} nt\n\n")
+            stats_out.write(f"Total transcripts: {stats['total']}\n")
+            stats_out.write(f"Passed filter: 0 (0.00%)\n")
+            stats_out.write(f"Filtered out: {stats['filtered']} (100.00%)\n")
+        print("ERROR: No transcripts pass the length filter", file=sys.stderr)
+        sys.exit(2)
+
     # Filter GTF based on passing transcripts
     print(f"Filtering GTF file...", file=sys.stderr)
 
@@ -60,8 +75,10 @@ def filter_transcripts_by_length(gtf_file, fasta_file, min_length, output_prefix
         stats_out.write("=" * 50 + "\n\n")
         stats_out.write(f"Minimum length threshold: {min_length} nt\n\n")
         stats_out.write(f"Total transcripts: {stats['total']}\n")
-        stats_out.write(f"Passed filter: {stats['passed']} ({stats['passed']/stats['total']*100:.2f}%)\n")
-        stats_out.write(f"Filtered out: {stats['filtered']} ({stats['filtered']/stats['total']*100:.2f}%)\n")
+        pct_passed = (stats['passed'] / stats['total'] * 100) if stats['total'] > 0 else 0
+        pct_filtered = (stats['filtered'] / stats['total'] * 100) if stats['total'] > 0 else 0
+        stats_out.write(f"Passed filter: {stats['passed']} ({pct_passed:.2f}%)\n")
+        stats_out.write(f"Filtered out: {stats['filtered']} ({pct_filtered:.2f}%)\n")
 
     print(f"✓ Done: {output_prefix}.length_filtered.gtf", file=sys.stderr)
     print(f"✓ Done: {output_prefix}.length_filtered.fa", file=sys.stderr)

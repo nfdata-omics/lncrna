@@ -32,13 +32,14 @@ process GENERATE_LNCRNA_REPORT {
     def de_plots_arg = de_plots.name != 'NO_FILE' ? "--de_plots $de_plots" : ""
     def count_summary_arg = count_summary.name != 'NO_FILE' ? "--count_summary $count_summary" : ""
     def rename_mapping_arg = rename_mapping.name != 'NO_FILE' ? "--rename_mapping $rename_mapping" : ""
+    def cpat_arg = cpat_comparison.name != 'NO_FILE' ? "--cpat_comparison $cpat_comparison" : "--cpat_comparison NO_FILE"
     """
     generate_lncrna_report.py \\
         $de_results_arg \\
         $de_plots_arg \\
         --classification $classification \\
         --classification_stats $classification_stats \\
-        --cpat_comparison $cpat_comparison \\
+        $cpat_arg \\
         $count_summary_arg \\
         --final_gtf $final_gtf \\
         $rename_mapping_arg \\

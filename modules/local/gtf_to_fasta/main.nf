@@ -27,6 +27,10 @@ process GTF_TO_FASTA {
         -g $fasta \\
         $args \\
         $gtf
+    if ! grep -q '^>' ${prefix}.transcripts.fa; then
+        echo "ERROR: No '>' headers in ${prefix}.transcripts.fa; upstream filtering may have produced an empty GTF." 1>&2
+        exit 2
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

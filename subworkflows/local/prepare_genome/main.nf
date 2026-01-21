@@ -22,6 +22,7 @@ include { CUSTOM_CATADDITIONALFASTA         } from '../../../modules/nf-core/cus
 include { SAMTOOLS_FAIDX                    } from '../../../modules/nf-core/samtools/faidx/main'
 include { GFFREAD                           } from '../../../modules/nf-core/gffread'
 include { GFFREAD as FASTA_EXTRACT_TRANSCRIPTS } from '../../../modules/nf-core/gffread'
+include { GFFREAD as PROTEIN_EXTRACT        } from '../../../modules/nf-core/gffread'
 include { BBMAP_BBSPLIT                     } from '../../../modules/nf-core/bbmap/bbsplit'
 include { SORTMERNA as SORTMERNA_INDEX      } from '../../../modules/nf-core/sortmerna'
 include { STAR_GENOMEGENERATE               } from '../../../modules/nf-core/star/genomegenerate'
@@ -204,16 +205,32 @@ workflow PREPARE_GENOME {
 //            ch_versions         = ch_versions.mix(PREPROCESS_TRANSCRIPTS_FASTA_GENCODE.out.versions)
         }
     } else {
-        // Extract transcripts from genome
-        ch_gtf_with_meta = ch_gtf_to_use.map { gtf -> [[:], gtf] }
-        ch_fasta_with_meta = ch_fasta.map { fasta -> [[:], fasta] }
+        // Extract transcripts from genome only if annotation is available
+        if (gtf || gff) {
+            ch_gtf_fasta_inputs = ch_gtf_to_use
+                .combine(ch_fasta)
+                .map { gtf, fasta -> [ [id:'transcripts'], gtf, fasta] }
+                .multiMap { meta, gtf, fasta ->
+                    gtf_input: [meta, gtf]
+                    fasta_input: fasta
+                }
 
-        FASTA_EXTRACT_TRANSCRIPTS (
-            ch_gtf_with_meta,
-            ch_fasta_with_meta
-        )
-        ch_transcript_fasta = FASTA_EXTRACT_TRANSCRIPTS.out.gffread_fasta.map { meta, fasta -> fasta }
-        // ch_versions = ch_versions.mix(FASTA_EXTRACT_TRANSCRIPTS.out.versions)
+            FASTA_EXTRACT_TRANSCRIPTS (
+                ch_gtf_fasta_inputs.gtf_input,
+                ch_gtf_fasta_inputs.fasta_input
+            )
+            ch_transcript_fasta = FASTA_EXTRACT_TRANSCRIPTS.out.gffread_fasta.map { meta, fasta ->
+                if (fasta instanceof List) {
+                    def expected = (meta?.id ? "${meta.id}.fasta" : null)
+                    def chosen = expected ? fasta.find { it.getName() == expected } : fasta.find { it.getName().endsWith('.fasta') }
+                    return chosen ?: fasta[0]
+                }
+                return fasta
+            }
+            // ch_versions = ch_versions.mix(FASTA_EXTRACT_TRANSCRIPTS.out.versions)
+        } else {
+            ch_transcript_fasta = Channel.empty()
+        }
     }
 
     //
@@ -230,9 +247,10 @@ workflow PREPARE_GENOME {
 
         ch_transcript_fasta = ch_transcript_fasta.combine(ch_ncrna_fasta)
             .map { transcripts, ncrna ->
-                def combined_file = file("${transcripts.parent}/${transcripts.baseName}_with_ncrna.fasta")
+                def outPath = "${transcripts.parent}/${transcripts.baseName}_with_ncrna.fasta"
+                def combined_file = new File(outPath)
                 combined_file.text = transcripts.text + "\n" + ncrna.text
-                combined_file
+                return file(outPath, checkIfExists: true)
             }
     }
 
@@ -259,8 +277,15 @@ workflow PREPARE_GENOME {
     def prepare_tool_indices = []
     if (!skip_bbsplit)                              { prepare_tool_indices << 'bbsplit' }
     if (!skip_sortmerna)                            { prepare_tool_indices << 'sortmerna' }
-    if (!skip_alignment)                            { prepare_tool_indices << aligner }
-    if (!skip_pseudo_alignment && pseudo_aligner)   { prepare_tool_indices << pseudo_aligner }
+    if (!skip_alignment) {
+        if (aligner && aligner.contains('star')) {
+            prepare_tool_indices << 'star'
+        } else if (aligner == 'hisat2') {
+            prepare_tool_indices << 'hisat2'
+        }
+    }
+    def have_transcripts = (transcript_fasta || gtf || gff)
+    if (!skip_pseudo_alignment && pseudo_aligner && have_transcripts)   { prepare_tool_indices << pseudo_aligner }
 
     //
     // Uncompress BBSplit index or generate from scratch if required
@@ -296,7 +321,7 @@ workflow PREPARE_GENOME {
     ch_rrna_fastas = Channel.empty()
 
     if ('sortmerna' in prepare_tool_indices) {
-        ribo_db = file(sortmerna_fasta_list)
+        ribo_db = file(ribo_database_manifest)
 
         // SortMeRNA needs the rRNAs even if we're providing the index
         ch_rrna_fastas = Channel.from(ribo_db.readLines())
@@ -430,7 +455,20 @@ workflow PREPARE_GENOME {
     //
     // Make BLASTP DB
     //
-    BLAST_MAKEBLASTDB ( ch_cds_fasta.map { [ [id:'cds'], it ] } )
+    ch_gtf_fasta_inputs_prot = ch_gtf
+        .combine(ch_fasta)
+        .map { gtf, fasta -> [ [id:'proteins'], gtf, fasta ] }
+        .multiMap { meta, gtf_file, fasta_file ->
+            gtf_input: [meta, gtf_file]
+            fasta_input: fasta_file
+        }
+
+    PROTEIN_EXTRACT (
+        ch_gtf_fasta_inputs_prot.gtf_input,
+        ch_gtf_fasta_inputs_prot.fasta_input
+    )
+
+    BLAST_MAKEBLASTDB ( PROTEIN_EXTRACT.out.gffread_fasta.map { meta, fa -> [ meta, fa ] } )
     ch_blast_protein_db = BLAST_MAKEBLASTDB.out.db
 //    ch_versions = ch_versions.mix(BLAST_MAKEBLASTDB.out.versions)
 
