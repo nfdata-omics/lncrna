@@ -1,3 +1,10 @@
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nfdata-omics_logo.png">
+    <img alt="nf-core/lncrna" src="docs/images/nfdata-omics_logo.png">
+  </picture>
+</h1>
+
 # nfdata-omics/lncrna
 
 [![Open in GitHub Codespaces](https://img.shields.io/badge/Open_In_GitHub_Codespaces-black?labelColor=grey&logo=github)](https://github.com/codespaces/new/nfdata-omics/lncrna)
@@ -14,14 +21,13 @@
 
 ## Introduction
 
-**nfdata-omics/lncrna** is a bioinformatics pipeline that processes RNA‑seq data to quantify known lncRNAs and optionally discover novel lncRNAs. It performs FASTQ QC and alignment, transcript assembly and novelty filtering, coding‑potential assessment, genomic‑context classification, and reporting. By default it runs in known‑only mode; enabling the discovery branch adds StringTie+gffcompare+CPAT/FEELnc/PLEK steps and a final evaluation.
+**nfdata-omics/lncrna** is a bioinformatics pipeline that processes RNA‑seq data to quantify known lncRNAs and optionally discover novel lncRNAs. It performs FASTQ QC and alignment, transcript assembly and novelty filtering, coding‑potential assessment, genomic‑context classification, and reporting. By default it runs in known‑only-lncrnas mode; enabling the discovery branch adds identification, coding-potential assessment and a final evaluation of lncRNAs.
 
-- FASTQ QC and optional trimming; optional rRNA removal and filtering
+- FASTQ QC and trimming; optional rRNA removal and filtering
 - Alignment and quantification (STAR or HISAT2)
 - Transcript assembly (StringTie) and merge
-- Annotation with gffcompare; filter candidates by class codes i,u,x,j
-- Convert filtered GTF to FASTA
-- Optional novel branch: length/exon filters, CPAT/FEELnc/PLEK, consensus, filter against known, classification and final merge, evaluation (CPAT re‑run)
+- Pseudo-allignment with Salmon.
+- Optional novel lncRNAs identification: Coding-potential (CPAT/FEELnc/PLEK), filter against known lncRNAs, classification.
 - Final HTML report and aggregated QC (MultiQC)
 
 <!-- Add a tube map or workflow figure here if desired -->
@@ -66,43 +72,30 @@ nextflow run main.nf \
 > [!WARNING]
 > Provide pipeline parameters via the CLI or Nextflow `-params-file`. Custom config files (`-c`) can adjust executor and resource configuration but should not define parameters; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
 
-## Key Parameters
-
-- novel_lncrnas: boolean (default: false). Enables the full novel lncRNA discovery branch when true; runs known‑only mode when false.
-- classcodes: gffcompare class codes retained for initial candidate filtering (default: i,u,x,j; configurable).
-- min_transcript_length: minimum transcript length (default: 200 nt).
-- min_exons: minimum number of exons (default: 2).
-- skip_cpat, skip_feelnc, skip_plek: disable specific coding‑potential tools if desired.
-- blast_evalue, blast_pident, blast_qcov, blast_filter: parameters to tune BLAST‑based filtering during classification.
-- counts_method: featurecounts (default) or htseq; optional pseudo‑alignment with Salmon/Kallisto.
-- aligner: STAR (default) or HISAT2; pseudo_aligner: Salmon (default).
-
 ## Outputs
 
+### Known lncRNA assessment
+
 - lncrna_gtf_filtering/by_classcode: filtered GTF and classcode stats
-  - _.filtered.gtf, _.classcode_stats.txt
-- lncrna_transcript_filtering/transcripts_length: length‑filtered outputs (novel branch)
-  - _.filtered_length.gtf, _.filtered_length.fa
-- lncrna_transcript_filtering/transcripts_exons: exon‑filtered outputs (novel branch)
-  - _.exon_filtered.gtf, _.exon_filtered.fa, \*.exon_stats.txt
-- lncrna_prediction/cpat: CPAT predictions (novel branch)
-  - \*.cpat.tsv
-- lncrna_prediction/cpat/models: CPAT models when built
-  - hexamer.tsv, logit model (RData)
-- lncrna_prediction/plek and lncrna_prediction/feelnc: tool‑specific outputs (novel branch)
-- lncrna_prediction/combined_predictions: consensus results (novel branch)
-  - final lncRNA _.gtf, _.fasta, summary report
 - lncrna_final_annotation: final combined annotation and splits
-  - _.final_all.gtf, _.final*all.fa, *.lncrna*only.fa, *.protein_only.fa
 - expression/quantification: per‑sample quantification outputs
+- multiqc: aggregated QC report
+
+### Novel lncRNAs discovery
+
+- lncrna_transcript_filtering/transcripts_length: length‑filtered outputs
+- lncrna_transcript_filtering/transcripts_exons: exon‑filtered outputs
+- lncrna_prediction/cpat: CPAT predictions
+- lncrna_prediction/cpat/models: CPAT models when built
+- lncrna_prediction/plek and lncrna_prediction/feelnc: tool‑specific outputs
+- lncrna_prediction/combined_predictions: consensus results
 - expression/matrix: merged count matrix and gene metadata
-- lncrna_report: final HTML report, summary text, and stats JSON
-  - _.final_report.html, _.summary.txt, \*.stats.json
+- lncrna_report: final HTML report and summary text
 - multiqc: aggregated QC report
 
 ## Credits
 
-nfdata-omics/lncrna was originally written by K. Ruiz, M. Bonfanti, ....
+nfdata-omics/lncrna was originally written by K. Ruiz-Ceja, M. Bonfanti, ....
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 
