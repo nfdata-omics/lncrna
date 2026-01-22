@@ -1,7 +1,7 @@
 <h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nfdata-omics_logo.png">
-    <img alt="nf-core/lncrna" src="docs/images/nfdata-omics_logo.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nfdata-omics-lncrna_logo.png">
+    <img alt="nf-core/lncrna" src="docs/images/nfdata-omics-lncrna_logo.png">
   </picture>
 </h1>
 

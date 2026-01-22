@@ -96,27 +96,53 @@ def main():
     # 2. Load Gene Annotations
     gene_info = parse_gtf_coords(args.gtf)
 
+    # Debug: Print first few genes from expression matrix and GTF
+    print(f"DEBUG: First 5 expression IDs: {list(df.index[:5])}", file=sys.stderr)
+    print(f"DEBUG: First 5 GTF IDs: {list(gene_info.keys())[:5]}", file=sys.stderr)
+
     # 3. Separate lncRNA and Protein Coding
     lncrna_ids = []
     coding_ids = []
 
-    valid_genes = set(df.index)
+    # Helper to clean IDs (remove version dots)
+    def clean_id(x):
+        return str(x).split('.')[0]
+
+    # Map cleaned expression IDs to original IDs
+    expr_id_map = {clean_id(gid): gid for gid in df.index}
+    valid_genes_clean = set(expr_id_map.keys())
+
+    count_lnc = 0
+    count_pc = 0
 
     for gid, info in gene_info.items():
-        if gid not in valid_genes:
+        gid_clean = clean_id(gid)
+
+        if gid_clean not in valid_genes_clean:
             continue
 
+        # Get original expression ID
+        original_expr_id = expr_id_map[gid_clean]
+
         gtype = info.get('type', '')
-        # Adjust these checks based on your specific GTF biotypes
-        if gtype in ['lncRNA', 'novel_lncRNA', 'lincRNA', 'antisense']:
-            lncrna_ids.append(gid)
+        # Extended biotypes
+        if gtype in ['lncRNA', 'novel_lncRNA', 'lincRNA', 'antisense', 'processed_transcript', 'sense_intronic', 'sense_overlapping', '3prime_overlapping_ncRNA']:
+            lncrna_ids.append(original_expr_id)
+            count_lnc += 1
         elif gtype in ['protein_coding', 'mRNA']:
-            coding_ids.append(gid)
+            coding_ids.append(original_expr_id)
+            count_pc += 1
 
     print(f"Found {len(lncrna_ids)} lncRNAs and {len(coding_ids)} protein-coding genes in expression matrix.", file=sys.stderr)
 
     if not lncrna_ids or not coding_ids:
         print("Error: Not enough genes found to analyze.", file=sys.stderr)
+        # Fallback: if 0 found, list some GTF types found to debug
+        types_found = {}
+        for gid, info in gene_info.items():
+            t = info.get('type', 'unknown')
+            types_found[t] = types_found.get(t, 0) + 1
+        print(f"DEBUG: Gene types found in GTF: {types_found}", file=sys.stderr)
         sys.exit(1)
 
     # 4. Cis Analysis
