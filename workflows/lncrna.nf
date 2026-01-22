@@ -506,14 +506,14 @@ workflow LNCRNA {
         ).collect() :
         channel.empty()
     GENERATE_LNCRNA_REPORT (
-        ch_de_results_for_report.ifEmpty(file("$projectDir/assets/NO_FILE")),
-        ch_de_plots_for_report.ifEmpty(file("$projectDir/assets/NO_FILE")),
+        ch_de_results_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_results")),
+        ch_de_plots_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_plots")),
         ch_lncrna_classification.map { meta, file -> file },
         ch_lncrna_stats.map { meta, file -> file },
-        ch_cpat_plot.ifEmpty(file("$projectDir/assets/NO_FILE")),
-        ch_alignment_matrix.ifEmpty(file("$projectDir/assets/NO_FILE")),
+        ch_cpat_plot.ifEmpty(file("$projectDir/assets/NO_FILE_cpat")),
+        ch_alignment_matrix.ifEmpty(file("$projectDir/assets/NO_FILE_counts")),
         ch_final_annotation.map { meta, gtf -> gtf },
-        params.novel_lncrnas ? ch_lncrna_gtf.map { meta, gtf -> gtf } : channel.value(file("$projectDir/assets/NO_FILE"))
+        params.novel_lncrnas ? ch_lncrna_gtf.map { meta, gtf -> gtf } : channel.value(file("$projectDir/assets/NO_FILE_rename"))
     )
     ch_final_report = GENERATE_LNCRNA_REPORT.out.report
     ch_pipeline_summary = GENERATE_LNCRNA_REPORT.out.summary

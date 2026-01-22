@@ -4,8 +4,8 @@ process GENERATE_LNCRNA_REPORT {
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/python:3.9--1' :
-        'biocontainers/python:3.9--1' }"
+        'https://depot.galaxyproject.org/singularity/mulled-v2-f42a44964bca5225c7860882e231a7b5488b5485:47ef981087c59f79fdbcab4d9d7316e9ac2e688d-0' :
+        'quay.io/biocontainers/mulled-v2-f42a44964bca5225c7860882e231a7b5488b5485:47ef981087c59f79fdbcab4d9d7316e9ac2e688d-0' }"
 
     input:
     path de_results
@@ -28,11 +28,11 @@ process GENERATE_LNCRNA_REPORT {
 
     script:
     def prefix = task.ext.prefix ?: "lncRNA_pipeline"
-    def de_results_arg = de_results.name != 'NO_FILE' ? "--de_results $de_results" : ""
-    def de_plots_arg = de_plots.name != 'NO_FILE' ? "--de_plots $de_plots" : ""
-    def count_summary_arg = count_summary.name != 'NO_FILE' ? "--count_summary $count_summary" : ""
-    def rename_mapping_arg = rename_mapping.name != 'NO_FILE' ? "--rename_mapping $rename_mapping" : ""
-    def cpat_arg = cpat_comparison.name != 'NO_FILE' ? "--cpat_comparison $cpat_comparison" : "--cpat_comparison NO_FILE"
+    def de_results_arg = !de_results.name.startsWith('NO_FILE') ? "--de_results $de_results" : ""
+    def de_plots_arg = (de_plots instanceof List) ? "--de_plots ." : (!de_plots.name.startsWith('NO_FILE') ? "--de_plots $de_plots" : "")
+    def count_summary_arg = !count_summary.name.startsWith('NO_FILE') ? "--count_summary $count_summary" : ""
+    def rename_mapping_arg = !rename_mapping.name.startsWith('NO_FILE') ? "--rename_mapping $rename_mapping" : ""
+    def cpat_arg = !cpat_comparison.name.startsWith('NO_FILE') ? "--cpat_comparison $cpat_comparison" : "--cpat_comparison NO_FILE"
     """
     generate_lncrna_report.py \\
         $de_results_arg \\

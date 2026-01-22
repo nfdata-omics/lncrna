@@ -22,7 +22,7 @@ process ANALYSIS_CIS_TRANS {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    analyze_cis_trans.py \\
+    python3 ${workflow.projectDir}/bin/analyze_cis_trans.py \\
         --expression $expression_matrix \\
         --gtf $gtf \\
         --output_cis ${prefix}.cis_results.tsv \\
