@@ -5,8 +5,6 @@
   </picture>
 </h1>
 
-# nfdata-omics/lncrna
-
 [![Open in GitHub Codespaces](https://img.shields.io/badge/Open_In_GitHub_Codespaces-black?labelColor=grey&logo=github)](https://github.com/codespaces/new/nfdata-omics/lncrna)
 [![GitHub Actions CI Status](https://github.com/nfdata-omics/lncrna/actions/workflows/nf-test.yml/badge.svg)](https://github.com/nfdata-omics/lncrna/actions/workflows/nf-test.yml)
 [![GitHub Actions Linting Status](https://github.com/nfdata-omics/lncrna/actions/workflows/linting.yml/badge.svg)](https://github.com/nfdata-omics/lncrna/actions/workflows/linting.yml)[![Cite with Zenodo](http://img.shields.io/badge/DOI-10.5281/zenodo.XXXXXXX-1073c8?labelColor=000000)](https://doi.org/10.5281/zenodo.XXXXXXX)
@@ -22,6 +20,8 @@
 ## Introduction
 
 **nfdata-omics/lncrna** is a bioinformatics pipeline that processes RNA‑seq data to quantify known lncRNAs and optionally discover novel lncRNAs. It performs FASTQ QC and alignment, transcript assembly and novelty filtering, coding‑potential assessment, genomic‑context classification, and reporting. By default it runs in known‑only-lncrnas mode; enabling the discovery branch adds identification, coding-potential assessment and a final evaluation of lncRNAs.
+
+![nfdata-omics/lncrna metro map](docs/images/nfdata-omics-lncrna-pipeline.png)
 
 - FASTQ QC and trimming; optional rRNA removal and filtering
 - Alignment and quantification (STAR or HISAT2)
