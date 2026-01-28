@@ -183,6 +183,33 @@ def validateInputSamplesheet(input) {
 
     return [ metas[0], fastqs ]
 }
+
+//
+// Function to get STAR mapped percentage
+//
+def getStarPercentMapped(params, align_log) {
+    def percent_mapped = 0
+    try {
+        if (align_log.exists()) {
+            align_log.eachLine { line ->
+                if (line.contains("Uniquely mapped reads %")) {
+                    percent_mapped = line.split("\\|")[1].trim().replace('%', '').toFloat()
+                }
+            }
+        }
+    } catch (Exception e) {
+        log.warn "Error parsing STAR log: ${e.message}"
+    }
+
+    def pass = false
+    if (params.min_mapped_reads && percent_mapped >= params.min_mapped_reads.toFloat()) {
+        pass = true
+    } else if (!params.min_mapped_reads) {
+        pass = true
+    }
+
+    return [ percent_mapped, pass ]
+}
 //
 // Get attribute from genome config file e.g. fasta
 //

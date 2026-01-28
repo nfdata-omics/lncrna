@@ -15,17 +15,19 @@ process EXTRACT_MRNA_SEQUENCES {
 
     script:
     """
-    # Extract full mRNA transcripts from protein-coding genes
-    gffread -w mrna_sequences.fa -g $fasta $gtf -C
+    # Filter GTF for protein_coding transcripts
+    awk -F'\\t' '(\$3=="transcript") && (\$9 ~ /(transcript_biotype|gene_biotype|gene_type) "protein_coding"/) { if (match(\$9, /transcript_id "([^"]+)"/, m)) print m[1] }' $gtf | sort -u > mrna_ids.txt
 
-    # Filter to keep only protein_coding transcripts
-    grep -A 1 'transcript_biotype "protein_coding"' mrna_sequences.fa > mrna_sequences_filtered.fa || true
+    if [ -s mrna_ids.txt ]; then
+        # Extract entries for these transcripts
+        awk 'FNR==NR{ids[\$1]=1; next} { if (match(\$0, /transcript_id "([^"]+)"/, m) && ids[m[1]]) print }' mrna_ids.txt $gtf > mrna.gtf
 
-    # If filtering didn't work (no biotype), use all transcripts
-    if [ ! -s mrna_sequences_filtered.fa ]; then
-        mv mrna_sequences.fa mrna_sequences_filtered.fa
+        # Generate FASTA
+        gffread -w mrna_sequences.fa -g $fasta mrna.gtf
+    else
+        # Fallback: create empty file if no protein_coding found
+        touch mrna_sequences.fa
     fi
-    mv mrna_sequences_filtered.fa mrna_sequences.fa
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

@@ -71,6 +71,12 @@ def parse_gtf(gtf_file):
                     'attributes': attr_dict
                 }
 
+    # Infer gene start/end from exons if missing (e.g. if 'gene' feature lines are missing)
+    for gene_name, info in genes.items():
+        if ('start' not in info or 'end' not in info) and info['exons']:
+            info['start'] = min(e[0] for e in info['exons'])
+            info['end'] = max(e[1] for e in info['exons'])
+
     return genes, transcripts
 
 
@@ -186,7 +192,8 @@ def main():
         category = classify_lncrna(lncrna_info, closest_gene, distance, protein_genes)
 
         lncrna_name = lncrna_info.get('gene_name', transcript_id)
-        classifications[lncrna_name] = {
+        classifications[transcript_id] = {
+            'gene_name': lncrna_name,
             'category': category,
             'closest_gene': closest_gene or 'None',
             'distance': distance
@@ -196,9 +203,9 @@ def main():
     # Write classification output
     print(f"Writing classification to {args.output}...", file=sys.stderr)
     with open(args.output, 'w') as out:
-        out.write("lncRNA_ID\tCategory\tClosest_Gene\tDistance\n")
-        for lncrna_name, info in sorted(classifications.items()):
-            out.write(f"{lncrna_name}\t{info['category']}\t{info['closest_gene']}\t{info['distance']}\n")
+        out.write("Transcript_ID\tGene_ID\tCategory\tClosest_Gene\tDistance\n")
+        for transcript_id, info in sorted(classifications.items()):
+            out.write(f"{transcript_id}\t{info['gene_name']}\t{info['category']}\t{info['closest_gene']}\t{info['distance']}\n")
 
     # Write statistics
     print(f"Writing statistics to {args.stats}...", file=sys.stderr)

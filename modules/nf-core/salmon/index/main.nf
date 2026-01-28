@@ -12,7 +12,7 @@ process SALMON_INDEX {
     path transcript_fasta
 
     output:
-    path "salmon"      , emit: index
+    path "index"       , emit: index
     path "versions.yml", emit: versions
 
     when:
@@ -44,7 +44,7 @@ process SALMON_INDEX {
         -t $fasta \\
         $decoys \\
         $args \\
-        -i salmon
+        -i index
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -54,22 +54,22 @@ process SALMON_INDEX {
 
     stub:
     """
-    mkdir salmon
-    touch salmon/complete_ref_lens.bin
-    touch salmon/ctable.bin
-    touch salmon/ctg_offsets.bin
-    touch salmon/duplicate_clusters.tsv
-    touch salmon/info.json
-    touch salmon/mphf.bin
-    touch salmon/pos.bin
-    touch salmon/pre_indexing.log
-    touch salmon/rank.bin
-    touch salmon/refAccumLengths.bin
-    touch salmon/ref_indexing.log
-    touch salmon/reflengths.bin
-    touch salmon/refseq.bin
-    touch salmon/seq.bin
-    touch salmon/versionInfo.json
+    mkdir index
+    touch index/complete_ref_lens.bin
+    touch index/ctable.bin
+    touch index/ctg_offsets.bin
+    touch index/duplicate_clusters.tsv
+    touch index/info.json
+    touch index/mphf.bin
+    touch index/pos.bin
+    touch index/pre_indexing.log
+    touch index/rank.bin
+    touch index/refAccumLengths.bin
+    touch index/ref_indexing.log
+    touch index/reflengths.bin
+    touch index/refseq.bin
+    touch index/seq.bin
+    touch index/versionInfo.json
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

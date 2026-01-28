@@ -334,8 +334,15 @@ def generate_html_report(args):
         else:
             f.write("Differential expression analysis: Not performed\n\n")
         f.write("LncRNA Classification:\n")
-        for _, row in class_stats_df.iterrows():
-            f.write(f"  - {row.iloc[0]}: {row.iloc[1]}\n")
+        if not class_stats_df.empty:
+            if class_stats_df.shape[1] >= 2:
+                for _, row in class_stats_df.iterrows():
+                    f.write(f"  - {row.iloc[0]}: {row.iloc[1]}\n")
+            elif class_stats_df.shape[1] == 1:
+                for _, row in class_stats_df.iterrows():
+                    f.write(f"  - {row.iloc[0]}\n")
+        else:
+            f.write("  No classification statistics available.\n")
     # Write JSON stats
     stats_json = {
         'pipeline': 'lncrna',

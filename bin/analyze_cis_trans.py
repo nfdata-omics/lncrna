@@ -25,21 +25,34 @@ def parse_gtf_coords(gtf_file):
     genes = {}
     print(f"Parsing GTF: {gtf_file}...", file=sys.stderr)
 
+    # Debug counters
+    lines_read = 0
+    features_found = set()
+
     with open(gtf_file, 'r') as f:
         for line in f:
             if line.startswith('#'):
                 continue
 
+            lines_read += 1
             fields = line.strip().split('\t')
             if len(fields) < 9:
                 continue
 
-            if fields[2] != 'gene':
+            feature = fields[2]
+            features_found.add(feature)
+
+            # Accept 'gene' or 'transcript' to handle GTFs without explicit gene lines
+            if feature not in ['gene', 'transcript']:
                 continue
 
             chrom = fields[0]
-            start = int(fields[3])
-            end = int(fields[4])
+            try:
+                start = int(fields[3])
+                end = int(fields[4])
+            except ValueError:
+                continue
+
             attributes = fields[8]
 
             # Parse attributes
@@ -51,10 +64,18 @@ def parse_gtf_coords(gtf_file):
                     attr_dict[key] = value.strip('"')
 
             gene_id = attr_dict.get('gene_id')
-            gene_name = attr_dict.get('gene_name', gene_id)
-            gene_type = attr_dict.get('gene_type') or attr_dict.get('gene_biotype')
+            if not gene_id:
+                continue
 
-            if gene_id:
+            gene_name = attr_dict.get('gene_name', gene_id)
+            # Try multiple keys for biotype
+            gene_type = (attr_dict.get('gene_type') or
+                         attr_dict.get('gene_biotype') or
+                         attr_dict.get('biotype') or
+                         attr_dict.get('transcript_type') or
+                         attr_dict.get('transcript_biotype'))
+
+            if feature == 'gene':
                 genes[gene_id] = {
                     'chrom': chrom,
                     'start': start,
@@ -62,7 +83,23 @@ def parse_gtf_coords(gtf_file):
                     'type': gene_type,
                     'name': gene_name
                 }
+            elif feature == 'transcript':
+                if gene_id not in genes:
+                    genes[gene_id] = {
+                        'chrom': chrom,
+                        'start': start,
+                        'end': end,
+                        'type': gene_type,
+                        'name': gene_name
+                    }
+                else:
+                    # Update coords if transcript extends gene boundaries
+                    genes[gene_id]['start'] = min(genes[gene_id]['start'], start)
+                    genes[gene_id]['end'] = max(genes[gene_id]['end'], end)
+                    if not genes[gene_id].get('type') and gene_type:
+                        genes[gene_id]['type'] = gene_type
 
+    print(f"DEBUG: Parsed {lines_read} lines. Features found: {features_found}", file=sys.stderr)
     return genes
 
 def calculate_correlation(s1, s2, method='pearson'):
@@ -92,6 +129,25 @@ def main():
     df = pd.read_csv(args.expression, sep='\t', index_col=0)
     # Ensure numeric
     df = df.apply(pd.to_numeric, errors='coerce').dropna()
+
+    # Filter out genes with zero variance (constant expression across samples)
+    # This avoids PearsonRConstantInputWarning and undefined correlations
+    if df.shape[1] > 1:
+        variance = df.var(axis=1)
+        df = df.loc[variance > 0]
+        print(f"DEBUG: Retained {len(df)} genes with non-zero variance.", file=sys.stderr)
+
+    # Check sample count
+    if df.shape[1] < 2:
+        print("Warning: Expression matrix has fewer than 2 samples. Correlation analysis cannot be performed.", file=sys.stderr)
+        # Create empty output files and exit successfully
+        pd.DataFrame(columns=['lncRNA_ID', 'lncRNA_Name', 'Gene_ID', 'Gene_Name', 'Chromosome', 'Distance', 'Correlation', 'P_value', 'FDR']).to_csv(args.output_cis, sep='\t', index=False)
+        if args.output_trans:
+            pd.DataFrame(columns=['lncRNA_ID', 'Gene_ID', 'Correlation', 'P_value']).to_csv(args.output_trans, sep='\t', index=False)
+        return
+
+    if df.shape[1] < 3:
+        print(f"Warning: Expression matrix has only {df.shape[1]} samples. P-values will not be statistically meaningful.", file=sys.stderr)
 
     # 2. Load Gene Annotations
     gene_info = parse_gtf_coords(args.gtf)
@@ -190,7 +246,17 @@ def main():
         for neighbor_id, distance in neighbors:
             r, p = calculate_correlation(df.loc[lnc], df.loc[neighbor_id], args.method)
 
-            if abs(r) >= args.min_corr and p <= args.pvalue:
+            # Skip if correlation is NaN
+            if np.isnan(r):
+                continue
+
+            # Check significance
+            # If N < 3, p-value is unreliable (often 1.0 or NaN). We rely on correlation magnitude.
+            is_significant = (p <= args.pvalue)
+            if df.shape[1] < 3:
+                is_significant = True
+
+            if abs(r) >= args.min_corr and is_significant:
                 cis_results.append({
                     'lncRNA_ID': lnc,
                     'lncRNA_Name': lnc_info['name'],
@@ -207,9 +273,13 @@ def main():
 
     if not cis_df.empty:
         # FDR Correction
-        if STATSMODELS_AVAIL:
-            reject, qvals, _, _ = multipletests(cis_df['P_value'], method='fdr_bh')
-            cis_df['FDR'] = qvals
+        if STATSMODELS_AVAIL and df.shape[1] >= 3:
+            try:
+                reject, qvals, _, _ = multipletests(cis_df['P_value'], method='fdr_bh')
+                cis_df['FDR'] = qvals
+            except Exception as e:
+                print(f"Warning: FDR correction failed: {e}", file=sys.stderr)
+                cis_df['FDR'] = cis_df['P_value']
         else:
             cis_df['FDR'] = cis_df['P_value'] # Fallback
             print("Warning: statsmodels not available, skipping FDR correction.", file=sys.stderr)

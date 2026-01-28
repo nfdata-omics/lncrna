@@ -7,7 +7,7 @@ include { MULTIQC                               } from '../modules/nf-core/multi
 include { paramsSummaryMap                      } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc                  } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML                } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText                } from '../subworkflows/local/utils_nfcore_lncrna_pipeline'
+include { methodsDescriptionText; getStarPercentMapped } from '../subworkflows/local/utils_nfcore_lncrna_pipeline'
 include { samplesheetToList                     } from 'plugin/nf-schema'
 
 //
@@ -449,9 +449,9 @@ workflow LNCRNA {
         QUANTIFY_PSEUDO_ALIGNMENT (
             channel.of([ [:], file(params.input, checkIfExists: true) ]),
             ch_strand_inferred_filtered_fastq,
-            ch_pseudo_index,
-            ch_transcript_fasta,
-            ch_final_annotation.map { meta, gtf -> gtf },
+            ch_pseudo_index.first(),
+            ch_transcript_fasta.first(),
+            ch_final_annotation.map { meta, gtf -> gtf }.first(),
             params.gtf_group_features ?: 'gene_id',
             params.gtf_extra_attributes ?: 'gene_name',
             params.pseudo_aligner ?: 'salmon',

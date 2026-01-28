@@ -18,7 +18,7 @@ read_delim_flexible <- function(file, header = TRUE, row.names = NULL, check.nam
     ext <- tolower(tail(strsplit(basename(file), split = "\\\\.")[[1]], 1))
 
     if (ext == "tsv" || ext == "txt") {
-        separator <- "\\t"
+        separator <- "\t"
     } else if (ext == "csv") {
         separator <- ","
     } else {
