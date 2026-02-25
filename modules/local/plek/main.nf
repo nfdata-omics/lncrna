@@ -21,15 +21,13 @@ process PLEK {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def args = task.ext.args ?: ''
     """
-    # Run PLEK
     PLEK.py \\
         -fasta $fasta \\
         -out ${prefix}.plek.txt \\
         -thread $task.cpus \\
         $args
 
-    # Convert to TSV format
-    convert_plek_output.py \\
+    python convert_plek_output.py \\
         --input ${prefix}.plek.txt \\
         --output ${prefix}.plek.tsv
 

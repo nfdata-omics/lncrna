@@ -21,36 +21,7 @@ process FEELNC_CODPOT {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-
-    // Pre-built mRNA reference (optional, improves accuracy)
-    def mrna_ref = task.ext.mrna_ref ?: ""
-    def mrna_option = mrna_ref ? "-m $mrna_ref" : ""
-
-    """
-    # Run FEELnc_codpot
-    FEELnc_codpot.pl \\
-        -i $candidate_fasta \\
-        -a $genome_fasta \\
-        $mrna_option \\
-        --mode=shuffle \\
-        --numtx=500 \\
-        -o ${prefix}.feelnc_codpot.txt \\
-        $args
-
-    # Parse output to standard TSV format
-    parse_feelnc_output.py \\
-        --input ${prefix}.feelnc_codpot.txt \\
-        --output ${prefix}.feelnc.tsv \\
-        --fasta $candidate_fasta \\
-        --prefix $prefix
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        feelnc: \$(FEELnc_codpot.pl --version 2>&1 | grep -oP 'FEELnc version \\K[0-9.]+' || echo "0.2.1")
-    END_VERSIONS
-    """
+    template 'parse_feelnc_output.py'
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"

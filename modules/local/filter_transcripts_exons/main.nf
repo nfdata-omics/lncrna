@@ -21,18 +21,5 @@ process FILTER_TRANSCRIPTS_EXONS {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def min_exons = task.ext.args ?: '2'
-    """
-    filter_transcripts_by_exons.py \\
-        --gtf $gtf \\
-        --fasta $fasta \\
-        --min_exons $min_exons \\
-        --prefix $prefix
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-    END_VERSIONS
-    """
+    template 'filter_transcripts_by_exons.py'
 }

@@ -26,12 +26,15 @@ include { SUMMARY_AND_CLASSIFY_LNCRNA           } from '../subworkflows/local/su
 include { EVALUATE_FINAL_LNCRNA                 } from '../subworkflows/local/evaluate_final_lncrna'
 include { QUANTIFY_EXPRESSION                   } from '../subworkflows/local/quantify_expression'
 include { GENERATE_COUNT_MATRIX                 } from '../modules/local/generate_count_matrix'
-include { ANALYSIS_CIS_TRANS                } from '../modules/local/analysis_cis_trans'
+include { ANALYSIS_CIS_TRANS                    } from '../modules/local/analysis_cis_trans'
 include { DIFFERENTIAL_EXPRESSION               } from '../modules/local/differential_expression'
 include { QUANTIFY_PSEUDO_ALIGNMENT             } from '../subworkflows/nf-core/quantify_pseudo_alignment'
 include { GENERATE_LNCRNA_REPORT                } from '../modules/local/generate_lncrna_report'
 include { MERGE_FINAL_ANNOTATION                } from '../modules/local/merge_final_annotation'
 include { CLASSIFY_LNCRNA                      } from '../modules/local/classify_lncrna'
+include { GTF_FILTER_PROTEIN_CODING            } from '../modules/local/gtf_filter_protein_coding'
+include { BAM_MARKDUPLICATES_PICARD            } from '../subworkflows/nf-core/bam_markduplicates_picard/main'
+include { FASTQC as FASTQC_TRIM                } from '../modules/nf-core/fastqc/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,6 +111,12 @@ workflow LNCRNA {
     //ch_versions                       = ch_versions.mix(FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.versions)
     ch_strand_inferred_filtered_fastq = FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.reads
     ch_trim_read_count                = FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.trim_read_count
+    if (!params.skip_fastqc && !params.skip_trimming && params.trimmer == 'trimgalore') {
+        FASTQC_TRIM(
+            FASTQ_QC_TRIM_FILTER_SETSTRANDEDNESS.out.reads
+        )
+        ch_multiqc_files = ch_multiqc_files.mix(FASTQC_TRIM.out.zip.collect{ it[1] })
+    }
 
     ch_trim_status = ch_trim_read_count
         .map {
@@ -186,12 +195,27 @@ workflow LNCRNA {
                 .mix(BAM_DEDUP_UMI_STAR.out.multiqc_files)
 
         } else {
-            // The deduplicated stats should take priority for MultiQC
+            if (params.markduplicates) {
+                BAM_MARKDUPLICATES_PICARD(
+                    ch_genome_bam,
+                    ch_fasta.map { [ [:], it ] },
+                    ch_fai.map { [ [:], it ] }
+                )
 
-            ch_multiqc_files = ch_multiqc_files
-                .mix(FASTQ_ALIGN_STAR.out.stats.collect{it[1]})
-                .mix(FASTQ_ALIGN_STAR.out.flagstat.collect{it[1]})
-                .mix(FASTQ_ALIGN_STAR.out.idxstats.collect{it[1]})
+                ch_genome_bam       = BAM_MARKDUPLICATES_PICARD.out.bam
+                ch_genome_bam_index = params.bam_csi_index ? BAM_MARKDUPLICATES_PICARD.out.csi : BAM_MARKDUPLICATES_PICARD.out.bai
+
+                ch_multiqc_files = ch_multiqc_files
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.metrics.collect{it[1]})
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.stats.collect{it[1]})
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.flagstat.collect{it[1]})
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.idxstats.collect{it[1]})
+            } else {
+                ch_multiqc_files = ch_multiqc_files
+                    .mix(FASTQ_ALIGN_STAR.out.stats.collect{it[1]})
+                    .mix(FASTQ_ALIGN_STAR.out.flagstat.collect{it[1]})
+                    .mix(FASTQ_ALIGN_STAR.out.idxstats.collect{it[1]})
+            }
         }
 
     }
@@ -239,12 +263,27 @@ workflow LNCRNA {
             ch_multiqc_files = ch_multiqc_files
                 .mix(BAM_DEDUP_UMI_HISAT2.out.multiqc_files)
         } else {
+            if (params.markduplicates) {
+                BAM_MARKDUPLICATES_PICARD(
+                    ch_genome_bam,
+                    ch_fasta.map { [ [:], it ] },
+                    ch_fai.map { [ [:], it ] }
+                )
 
-            // The deduplicated stats should take priority for MultiQC
-            ch_multiqc_files = ch_multiqc_files
-                .mix(FASTQ_ALIGN_HISAT2.out.stats.collect{it[1]})
-                .mix(FASTQ_ALIGN_HISAT2.out.flagstat.collect{it[1]})
-                .mix(FASTQ_ALIGN_HISAT2.out.idxstats.collect{it[1]})
+                ch_genome_bam       = BAM_MARKDUPLICATES_PICARD.out.bam
+                ch_genome_bam_index = params.bam_csi_index ? BAM_MARKDUPLICATES_PICARD.out.csi : BAM_MARKDUPLICATES_PICARD.out.bai
+
+                ch_multiqc_files = ch_multiqc_files
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.metrics.collect{it[1]})
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.stats.collect{it[1]})
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.flagstat.collect{it[1]})
+                    .mix(BAM_MARKDUPLICATES_PICARD.out.idxstats.collect{it[1]})
+            } else {
+                ch_multiqc_files = ch_multiqc_files
+                    .mix(FASTQ_ALIGN_HISAT2.out.stats.collect{it[1]})
+                    .mix(FASTQ_ALIGN_HISAT2.out.flagstat.collect{it[1]})
+                    .mix(FASTQ_ALIGN_HISAT2.out.idxstats.collect{it[1]})
+            }
         }
     }
 
@@ -339,9 +378,15 @@ workflow LNCRNA {
         ch_cpat_hexamer         = IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
         ch_cpat_logit           = IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
 
+        GTF_FILTER_PROTEIN_CODING (
+            ch_gtf
+        )
+        def ch_protein_coding_gtf_novel = GTF_FILTER_PROTEIN_CODING.out.protein_gtf
+
         SUMMARY_AND_CLASSIFY_LNCRNA (
             validated_lncrnas_gtf,
             ch_known_lncrna_gtf,
+            ch_protein_coding_gtf_novel,
             ch_gtf,
             ch_fasta,
             blast_protein_database,
@@ -372,33 +417,35 @@ workflow LNCRNA {
     }
     else {
         def ch_known_lncrna_tuple = ch_known_lncrna_gtf.map { gtf_file ->
-            def meta = [ id: 'known_lncrna' ]
+            def meta = [ id: 'lncrnas_classification' ]
             [ meta, gtf_file ]
         }
 
+        GTF_FILTER_PROTEIN_CODING (
+            ch_gtf
+        )
+        def ch_protein_coding_gtf = GTF_FILTER_PROTEIN_CODING.out.protein_gtf
+
         CLASSIFY_LNCRNA (
             ch_known_lncrna_tuple,
-            ch_gtf
+            ch_protein_coding_gtf
         )
         ch_lncrna_classification = CLASSIFY_LNCRNA.out.classification
         ch_lncrna_stats          = CLASSIFY_LNCRNA.out.stats
-
-        MERGE_FINAL_ANNOTATION (
-            ch_known_lncrna_tuple,
-            ch_gtf,
-            ch_fasta
-        )
-        ch_final_annotation = MERGE_FINAL_ANNOTATION.out.gtf
-        ch_lncrna_fasta     = MERGE_FINAL_ANNOTATION.out.lncrna_fasta
-        ch_protein_fasta    = MERGE_FINAL_ANNOTATION.out.protein_fasta
+        ch_final_annotation = ch_gtf.map { gtf_file ->
+            def meta = [ id: 'reference' ]
+            [ meta, gtf_file ]
+        }
+        ch_lncrna_fasta     = Channel.empty()
+        ch_protein_fasta    = Channel.empty()
         ch_lncrna_gtf       = ch_known_lncrna_tuple
 
         ch_cpat_hexamer         = Channel.empty()
         ch_cpat_logit           = Channel.empty()
         ch_cpat_lncrna_validation = Channel.empty()
         ch_cpat_coding_validation = Channel.empty()
-        ch_cpat_plot              = channel.value(file("$projectDir/assets/NO_FILE"))
-        ch_classification_plot    = channel.value(file("$projectDir/assets/NO_FILE"))
+        ch_cpat_plot              = channel.value(file("$projectDir/assets/NO_FILE_cpat"))
+        ch_classification_plot    = channel.value(file("$projectDir/assets/NO_FILE_cpat"))
     }
 
     // ==========================================
@@ -422,8 +469,8 @@ workflow LNCRNA {
         params.counts_method ?: 'featurecounts'
         )
     ch_alignment_matrix     = GENERATE_COUNT_MATRIX.out.matrix
+    ch_alignment_lncrna_matrix = GENERATE_COUNT_MATRIX.out.lncrna_matrix
     ch_alignment_gene_info  = GENERATE_COUNT_MATRIX.out.gene_info
-    //ch_lncrna_only_matrix   = GENERATE_COUNT_MATRIX.out.lncrna_matrix //no existe
 
     //
     // MODULE: Cis/Trans Analysis
@@ -474,49 +521,53 @@ workflow LNCRNA {
         ch_design_file = Channel.fromPath(params.design_file, checkIfExists: true)
         // DE alignment-based
         DIFFERENTIAL_EXPRESSION (
-            ch_alignment_matrix.map { matrix -> [ ['id': 'alignment'], matrix ] },
-            ch_alignment_gene_info,
+            ch_alignment_lncrna_matrix.map { matrix -> [ ['id': 'alignment', 'contrast': params.contrast ?: '' ], matrix ] },
+            //ch_alignment_gene_info,
             ch_design_file,
-            params.de_method ?: 'DESeq2'
+            params.contrast,
+            params.lfc,
+            params.fdr,
+            params.min_count,
+            params.min_total,
+            params.correction_mode,
+            params.batch ?: 'null',
+            params.ruv_k,
+            params.ruv_controls,
+            params.top_genes,
+            params.de_method ?: 'edgeR'
         )
-        ch_de_results = DIFFERENTIAL_EXPRESSION.out.results
+        ch_de_results = DIFFERENTIAL_EXPRESSION.out.results_xlsx
         ch_de_normalized = DIFFERENTIAL_EXPRESSION.out.normalized
-        ch_de_dds = DIFFERENTIAL_EXPRESSION.out.dds
         // Plots
-        ch_ma_plot = DIFFERENTIAL_EXPRESSION.out.ma_plot
-        ch_volcano_plot = DIFFERENTIAL_EXPRESSION.out.volcano
-        ch_pca_plot = DIFFERENTIAL_EXPRESSION.out.pca
-        ch_heatmap = DIFFERENTIAL_EXPRESSION.out.heatmap
-        ch_dispersion_plot = DIFFERENTIAL_EXPRESSION.out.dispersion
-
+        ch_mds_png = DIFFERENTIAL_EXPRESSION.out.mds_png
+        ch_pca_png = DIFFERENTIAL_EXPRESSION.out.pca_png
+        ch_heatmap_global = DIFFERENTIAL_EXPRESSION.out.heatmap_png
         }
 
     //
     // MODULE: Generate final report
     //
-    ch_de_results_for_report = params.design_file && !params.skip_differential_expression ?
-        ch_de_results.map { meta, results -> results } :
-        channel.empty()
-    ch_de_plots_for_report = params.design_file && !params.skip_differential_expression ?
-        channel.of(
-            ch_ma_plot,
-            ch_volcano_plot,
-            ch_pca_plot,
-            ch_heatmap
-        ).collect() :
-        channel.empty()
-    GENERATE_LNCRNA_REPORT (
-        ch_de_results_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_results")),
-        ch_de_plots_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_plots")),
-        ch_lncrna_classification.map { meta, file -> file },
-        ch_lncrna_stats.map { meta, file -> file },
-        ch_cpat_plot.ifEmpty(file("$projectDir/assets/NO_FILE_cpat")),
-        ch_alignment_matrix.ifEmpty(file("$projectDir/assets/NO_FILE_counts")),
-        ch_final_annotation.map { meta, gtf -> gtf },
-        params.novel_lncrnas ? ch_lncrna_gtf.map { meta, gtf -> gtf } : channel.value(file("$projectDir/assets/NO_FILE_rename"))
-    )
-    ch_final_report = GENERATE_LNCRNA_REPORT.out.report
-    ch_pipeline_summary = GENERATE_LNCRNA_REPORT.out.summary
+    // ch_de_results_for_report = params.design_file && !params.skip_differential_expression ?
+    //     ch_de_results.map { meta, results -> results } :
+    //     channel.empty()
+    // ch_de_plots_for_report = params.design_file && !params.skip_differential_expression ?
+    //     ch_mds_png
+    //         .mix(ch_pca_png)
+    //         .mix(ch_heatmap_global)
+    //         .collect() :
+    //     channel.empty()
+    // GENERATE_LNCRNA_REPORT (
+    //     ch_de_results_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_results")),
+    //     ch_de_plots_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_plots")),
+    //     ch_lncrna_classification.map { meta, file -> file },
+    //     ch_lncrna_stats.map { meta, file -> file },
+    //     ch_cpat_plot.ifEmpty(file("$projectDir/assets/NO_FILE_cpat")),
+    //     ch_alignment_matrix.ifEmpty(file("$projectDir/assets/NO_FILE_counts")),
+    //     ch_final_annotation.map { meta, gtf -> gtf },
+    //     params.novel_lncrnas ? ch_lncrna_gtf.map { meta, gtf -> gtf } : channel.value(file("$projectDir/assets/NO_FILE_rename"))
+    // )
+    // ch_final_report = GENERATE_LNCRNA_REPORT.out.report
+    // ch_pipeline_summary = GENERATE_LNCRNA_REPORT.out.summary
 
     //
     // Collate and save software versions

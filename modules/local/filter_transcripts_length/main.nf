@@ -21,18 +21,5 @@ process FILTER_TRANSCRIPTS_LENGTH {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    def min_length = task.ext.args ?: '200'
-    """
-    filter_transcripts_by_length.py \\
-        --gtf $gtf \\
-        --fasta $fasta \\
-        --min_length $min_length \\
-        --prefix $prefix
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-    END_VERSIONS
-    """
+    template 'filter_transcripts_by_length.py'
 }

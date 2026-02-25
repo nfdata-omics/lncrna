@@ -25,21 +25,5 @@ process GENERATE_FINAL_STATISTICS {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    generate_final_statistics.py \\
-        --final_gtf $final_gtf \\
-        --lncrna_gtf $lncrna_gtf \\
-        --cpat_lncrna $cpat_lncrna_results \\
-        --cpat_coding $cpat_coding_results \\
-        --classification $classification \\
-        --prefix $prefix
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-        pandas: \$(python -c "import pandas; print(pandas.__version__)")
-        matplotlib: \$(python -c "import matplotlib; print(matplotlib.__version__)")
-    END_VERSIONS
-    """
+    template 'generate_final_statistics.py'
 }

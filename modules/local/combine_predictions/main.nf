@@ -26,22 +26,5 @@ process COMBINE_PREDICTIONS {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "${meta4.id}"
-    def consensus_mode = task.ext.args ?: 'majority'  // majority, strict, lenient
-    """
-    combine_lncrna_predictions.py \\
-        --cpat $cpat_results \\
-        --feelnc $feelnc_results \\
-        --plek $plek_results \\
-        --gtf $gtf \\
-        --fasta $fasta \\
-        --tmap $tmap \\
-        --mode $consensus_mode \\
-        --prefix $prefix
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-    END_VERSIONS
-    """
+    template 'combine_lncrna_predictions.py'
 }

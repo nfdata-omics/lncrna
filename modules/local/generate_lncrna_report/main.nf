@@ -27,29 +27,5 @@ process GENERATE_LNCRNA_REPORT {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "lncRNA_pipeline"
-    def de_results_arg = !de_results.name.startsWith('NO_FILE') ? "--de_results $de_results" : ""
-    def de_plots_arg = (de_plots instanceof List) ? "--de_plots ." : (!de_plots.name.startsWith('NO_FILE') ? "--de_plots $de_plots" : "")
-    def count_summary_arg = !count_summary.name.startsWith('NO_FILE') ? "--count_summary $count_summary" : ""
-    def rename_mapping_arg = !rename_mapping.name.startsWith('NO_FILE') ? "--rename_mapping $rename_mapping" : ""
-    def cpat_arg = !cpat_comparison.name.startsWith('NO_FILE') ? "--cpat_comparison $cpat_comparison" : "--cpat_comparison NO_FILE"
-    """
-    generate_lncrna_report.py \\
-        $de_results_arg \\
-        $de_plots_arg \\
-        --classification $classification \\
-        --classification_stats $classification_stats \\
-        $cpat_arg \\
-        $count_summary_arg \\
-        --final_gtf $final_gtf \\
-        $rename_mapping_arg \\
-        --output ${prefix}.final_report.html \\
-        --summary ${prefix}.summary.txt
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-        pandas: \$(python -c "import pandas; print(pandas.__version__)" 2>/dev/null || echo "not available")
-    END_VERSIONS
-    """
+    template 'generate_lncrna_report.py'
 }

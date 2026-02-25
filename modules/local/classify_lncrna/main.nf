@@ -14,23 +14,12 @@ path protein_coding_gtf
 output:
 tuple val(meta), path("*.classification.txt"), emit: classification
 tuple val(meta), path("*.stats.txt")         , emit: stats
+tuple val(meta), path("README.txt")          , emit: readme
 path "versions.yml"                          , emit: versions
 
-when:
-task.ext.when == null || task.ext.when
+    when:
+    task.ext.when == null || task.ext.when
 
-script:
-def prefix = task.ext.prefix ?: "${meta.id}"
-"""
-classify_lncrna.py \\
-    --lncrna_gtf $lncrna_gtf \\
-    --protein_gtf $protein_coding_gtf \\
-    --output ${prefix}.classification.txt \\
-    --stats ${prefix}.stats.txt
-
-cat <<-END_VERSIONS > versions.yml
-"${task.process}":
-    python: \$(python --version | sed 's/Python //g')
-END_VERSIONS
-"""
+    script:
+    template 'classify_lncrna.py'
 }

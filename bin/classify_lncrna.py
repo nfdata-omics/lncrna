@@ -12,6 +12,7 @@ Categories:
 """
 
 import argparse
+import os
 import sys
 from collections import defaultdict
 
@@ -203,9 +204,10 @@ def main():
     # Write classification output
     print(f"Writing classification to {args.output}...", file=sys.stderr)
     with open(args.output, 'w') as out:
-        out.write("Transcript_ID\tGene_ID\tCategory\tClosest_Gene\tDistance\n")
+        out.write("Transcript_ID\tGene_ID\tCategory\tClosest_Gene\tDistance\tChromosome\tStart\tEnd\tStrand\n")
         for transcript_id, info in sorted(classifications.items()):
-            out.write(f"{transcript_id}\t{info['gene_name']}\t{info['category']}\t{info['closest_gene']}\t{info['distance']}\n")
+            ln = lncrna_transcripts[transcript_id]
+            out.write(f"{transcript_id}\t{info['gene_name']}\t{info['category']}\t{info['closest_gene']}\t{info['distance']}\t{ln['chrom']}\t{ln['start']}\t{ln['end']}\t{ln['strand']}\n")
 
     # Write statistics
     print(f"Writing statistics to {args.stats}...", file=sys.stderr)
@@ -220,6 +222,31 @@ def main():
             count = category_counts[category]
             percentage = (count / total * 100) if total > 0 else 0
             stats.write(f"{category:20s}: {count:6d} ({percentage:5.1f}%)\n")
+
+    # Write README explaining columns and distance interpretation
+    out_dir = os.path.dirname(args.output) or "."
+    readme_path = os.path.join(out_dir, "README.txt")
+    print(f"Writing README to {readme_path}...", file=sys.stderr)
+    with open(readme_path, 'w') as readme:
+        readme.write(
+            "This file describes the columns of lncrnas_classification.classification.txt\n\n"
+            "Columns:\n"
+            "- Transcript_ID: lncRNA transcript identifier.\n"
+            "- Gene_ID: lncRNA gene identifier or name.\n"
+            "- Category: genomic classification of the lncRNA relative to the closest protein-coding gene.\n"
+            "- Closest_Gene: name of the closest protein-coding gene.\n"
+            "- Distance: minimal genomic distance in base pairs between the lncRNA and the closest gene.\n\n"
+            "- Chromosome: chromosome where the lncRNA is located.\n"
+            "- Start: 1-based genomic start position of the lncRNA.\n"
+            "- End: 1-based genomic end position of the lncRNA.\n"
+            "- Strand: genomic strand of the lncRNA ('+' or '-').\n\n"
+            "Distance rules used for classification:\n"
+            "- > 1000 bp: Intergenic\n"
+            "- 0 < distance \u2264 1000 bp and opposite strand: Bidirectional\n"
+            "- distance = 0 and opposite strand: Antisense\n"
+            "- distance = 0, same strand and overlapping exons: Exonic Sense\n"
+            "- distance = 0, same strand and no exon overlap: Intronic Sense\n"
+        )
 
     print("Done!", file=sys.stderr)
 

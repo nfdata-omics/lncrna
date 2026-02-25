@@ -19,19 +19,7 @@ process FILTER_GTF_BY_CLASSCODE {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "${gtf.baseName}"
-    def classcodes = task.ext.args ?: 'i,u,x,j'  // Default: i, u, x, j
-    """
-    filter_gtf_by_classcode.py \\
-        --gtf $gtf \\
-        --classcodes $classcodes \\
-        --prefix $prefix
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-    END_VERSIONS
-    """
+    template 'filter_gtf_by_classcode.py'
 
     stub:
     def prefix = task.ext.prefix ?: "${gtf.baseName}"

@@ -438,7 +438,7 @@ workflow PREPARE_GENOME {
     }
 
     //
-    // Extract reference sequences for coding potential training
+    // Extract reference sequences and build protein database
     //
     EXTRACT_CDS_SEQUENCES ( ch_fasta, ch_gtf )
     ch_cds_fasta = EXTRACT_CDS_SEQUENCES.out.fasta
@@ -452,14 +452,11 @@ workflow PREPARE_GENOME {
     ch_lncrna_fasta = EXTRACT_LNCRNA_SEQUENCES.out.fasta
 //    ch_versions = ch_versions.mix(EXTRACT_LNCRNA_SEQUENCES.out.versions)
 
-    //
-    // Make BLASTP DB
-    //
     ch_gtf_fasta_inputs_prot = ch_gtf
         .combine(ch_fasta)
         .map { gtf, fasta -> [ [id:'proteins'], gtf, fasta ] }
         .multiMap { meta, gtf_file, fasta_file ->
-            gtf_input: [meta, gtf_file]
+            gtf_input: [ meta, gtf_file ]
             fasta_input: fasta_file
         }
 
@@ -476,10 +473,10 @@ workflow PREPARE_GENOME {
     emit:
     fasta            = ch_fasta                  // channel: path(genome.fasta)
     gtf              = ch_gtf                    // channel: path(genome.gtf)
-    fai              = ch_fai                    // channel: path(genome.fai)
     gene_bed         = ch_gene_bed               // channel: path(gene.bed)
     transcript_fasta = ch_transcript_fasta       // channel: path(transcript.fasta)
     chrom_sizes      = ch_chrom_sizes            // channel: path(genome.sizes)
+    fai              = ch_fai                    // channel: path(genome.fai)
     splicesites      = ch_splicesites            // channel: path(genome.splicesites.txt)
     bbsplit_index    = ch_bbsplit_index          // channel: path(bbsplit/index/)
     rrna_fastas      = ch_rrna_fastas            // channel: path(sortmerna_fasta_list)

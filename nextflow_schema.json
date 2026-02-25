@@ -385,6 +385,11 @@
             "description": "",
             "default": "",
             "properties": {
+                "markduplicates": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable Picard MarkDuplicates on aligned BAMs (disabled by default)."
+                },
                 "hisat2_index": {
                     "type": "string",
                     "hidden": true

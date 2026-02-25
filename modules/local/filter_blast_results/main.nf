@@ -19,18 +19,5 @@ process FILTER_BLAST_RESULTS {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    # Filter FASTA to keep only sequences without BLAST hits
-    filter_blast_results.py \\
-        --input $lncrna_fasta \\
-        --blast_hits $blast_hits \\
-        --output ${prefix}.filtered.fa \\
-        --stats ${prefix}.blast_filter_stats.txt
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-    END_VERSIONS
-    """
+    template 'filter_blast_results.py'
 }

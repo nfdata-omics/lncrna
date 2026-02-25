@@ -14,6 +14,7 @@ process GENERATE_COUNT_MATRIX {
 
     output:
     path "*.count_matrix.tsv"    , emit: matrix
+    path "*.lncrna_matrix.tsv"   , emit: lncrna_matrix
     path "*.gene_info.tsv"       , emit: gene_info
     path "*.sample_summary.tsv"  , emit: summary
     path "versions.yml"          , emit: versions
@@ -22,20 +23,5 @@ process GENERATE_COUNT_MATRIX {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: "expression"
-    """
-    merge_count_matrix.py \\
-        --counts ${count_files} \\
-        --gtf $gtf \\
-        --method $method \\
-        --output ${prefix}.count_matrix.tsv \\
-        --gene_info ${prefix}.gene_info.tsv \\
-        --summary ${prefix}.sample_summary.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-        pandas: \$(python -c "import pandas; print(pandas.__version__)")
-    END_VERSIONS
-    """
+    template 'merge_count_matrix.py'
 }

@@ -12,6 +12,7 @@ take:
     novel_lncrna_gtf       // tuple val(meta), path(gtf) - Novel lncRNAs from COMBINE_PREDICTIONS (IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf)
     known_lncrna_gtf       // path(known lncrnas gtf)- Known lncRNAs reference
     protein_coding_gtf     // path(gtf) - Protein-coding genes reference
+    merge_reference_gtf    // path(gtf) - Full reference GTF used for final merge
     genome_fasta           // path(fasta) - Genome reference
     blast_protein_db       // tuple val(meta), path(db) - De PREPARE_GENOME.out.blast_protein_db
     lncrna_fasta           //tuple val(meta), path(fasta)
@@ -27,6 +28,7 @@ FILTER_KNOWN_LNCRNA (
     known_lncrna_gtf
     )
 ch_truly_novel_gtf = FILTER_KNOWN_LNCRNA.out.gtf
+    .map { meta, gtf -> [ [id: 'lncrnas_classification'], gtf ] }
 //ch_versions = ch_versions.mix(FILTER_KNOWN_LNCRNA.out.versions)
 
 //
@@ -87,7 +89,7 @@ ch_stats = CLASSIFY_LNCRNA.out.stats
 //
 MERGE_FINAL_ANNOTATION (
     ch_renamed_gtf,
-    protein_coding_gtf,
+    merge_reference_gtf,
     genome_fasta
     )
 ch_final_gtf = MERGE_FINAL_ANNOTATION.out.gtf

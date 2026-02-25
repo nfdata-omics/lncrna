@@ -15,6 +15,8 @@ def parse_featurecounts(file_path):
     df = pd.read_csv(file_path, sep='\t', comment='#')
     # Column names: Geneid, Chr, Start, End, Strand, Length, counts
     sample_name = Path(file_path).stem
+    if sample_name.endswith('.featureCounts'):
+        sample_name = sample_name.replace('.featureCounts', '')
     counts = df.set_index('Geneid').iloc[:, -1]  # Last column is counts
     counts.name = sample_name
     return counts
@@ -65,7 +67,8 @@ def parse_gtf_gene_info(gtf_file):
                 continue
 
             feature = fields[2]
-            if feature != 'gene':
+            # Allow gene, transcript or exon to ensure we catch gene info
+            if feature not in ['gene', 'transcript', 'exon']:
                 continue
 
             chrom = fields[0]
@@ -87,14 +90,16 @@ def parse_gtf_gene_info(gtf_file):
             gene_type = attr_dict.get('gene_type') or attr_dict.get('gene_biotype', 'unknown')
 
             if gene_id:
-                gene_info[gene_id] = {
-                    'gene_name': gene_name,
-                    'gene_type': gene_type,
-                    'chromosome': chrom,
-                    'start': start,
-                    'end': end,
-                    'strand': strand
-                }
+                # Prioritize 'gene' feature, or take if not yet present
+                if gene_id not in gene_info or feature == 'gene':
+                    gene_info[gene_id] = {
+                        'gene_name': gene_name,
+                        'gene_type': gene_type,
+                        'chromosome': chrom,
+                        'start': start,
+                        'end': end,
+                        'strand': strand
+                    }
 
     return pd.DataFrame.from_dict(gene_info, orient='index')
 
@@ -154,13 +159,26 @@ def main():
     print("Extracting gene information from GTF...", file=sys.stderr)
     gene_info = parse_gtf_gene_info(args.gtf)
 
-    # Write count matrix
+    # Write count matrix (all biotypes)
     print(f"Writing count matrix to {args.output}...", file=sys.stderr)
     count_matrix.to_csv(args.output, sep='\t')
 
     # Write gene info
     print(f"Writing gene info to {args.gene_info}...", file=sys.stderr)
     gene_info.to_csv(args.gene_info, sep='\t')
+
+    # Write lncRNA-only count matrix if gene_type annotations are available
+    if not gene_info.empty and 'gene_type' in gene_info.columns:
+        lncrna_ids = gene_info.index[gene_info['gene_type'] == 'lncRNA']
+        if len(lncrna_ids) > 0:
+            lncrna_matrix = count_matrix.loc[count_matrix.index.intersection(lncrna_ids)]
+            lncrna_output = args.output
+            if lncrna_output.endswith(".count_matrix.tsv"):
+                lncrna_output = lncrna_output.replace(".count_matrix.tsv", ".lncrna_matrix.tsv")
+            else:
+                lncrna_output = lncrna_output + ".lncrna_matrix.tsv"
+            print(f"Writing lncRNA-only count matrix to {lncrna_output}...", file=sys.stderr)
+            lncrna_matrix.to_csv(lncrna_output, sep='\t')
 
     # Write summary
     print(f"Writing summary to {args.summary}...", file=sys.stderr)

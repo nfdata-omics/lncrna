@@ -19,21 +19,5 @@ process ANALYSIS_CIS_TRANS {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    python3 ${workflow.projectDir}/bin/analyze_cis_trans.py \\
-        --expression $expression_matrix \\
-        --gtf $gtf \\
-        --output_cis ${prefix}.cis_results.tsv \\
-        --output_trans ${prefix}.trans_results.tsv \\
-        $args
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-        pandas: \$(python -c "import pandas; print(pandas.__version__)" 2>/dev/null || echo "not available")
-        scipy: \$(python -c "import scipy; print(scipy.__version__)" 2>/dev/null || echo "not available")
-    END_VERSIONS
-    """
+    template 'analyze_cis_trans.py'
 }

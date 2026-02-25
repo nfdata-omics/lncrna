@@ -18,18 +18,7 @@ process GTF_FILTER_LNCRNA {
     task.ext.when == null || task.ext.when
 
     script:
-    // filter_gtf_lncrna.py is our custom script - filters to lncRNA only
-    """
-    filter_gtf_lncrna.py \\
-        --gtf $gtf \\
-        --prefix ${gtf.baseName} \\
-        --log_file ${gtf.baseName}.filter.log
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version | sed 's/Python //g')
-    END_VERSIONS
-    """
+    template 'filter_gtf_lncrna.py'
 
     stub:
     """
