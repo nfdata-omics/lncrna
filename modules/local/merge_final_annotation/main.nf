@@ -7,16 +7,16 @@ container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity
         'biocontainers/gffread:0.12.7--h077b44d_6' }"
 
 input:
-tuple val(meta), path(lncrna_gtf)
-path protein_coding_gtf
-path genome_fasta
+tuple val(meta), path(lncrna_gtf)       // RENAME_LNCRNA.out.gtf
+path protein_coding_gtf                 // GTF_FILTER_PROTEIN_CODING.out.protein_gtf
+path fasta                              // PREPARE_GENOME.out.fasta
 
 output:
-tuple val(meta), path("*.final_all.gtf")  , emit: gtf
-tuple val(meta), path("*.final_all.fa")   , emit: fasta
-tuple val(meta), path("*.lncrna_only.fa") , emit: lncrna_fasta
-tuple val(meta), path("*.protein_only.fa"), emit: protein_fasta
-path "versions.yml"                        , emit: versions
+tuple val(meta), path("*.final_all.gtf")        , emit: gtf
+tuple val(meta), path("*.final_all.fa")         , emit: fasta
+tuple val(meta), path("*.lncrna_only.fa")       , emit: lncrna_fasta
+tuple val(meta), path("*.protein_only.fa")      , emit: protein_fasta
+path "versions.yml"                             , emit: versions
 
 when:
 task.ext.when == null || task.ext.when
@@ -29,19 +29,19 @@ cat $lncrna_gtf $protein_coding_gtf > ${prefix}.final_all.gtf
 
 # Extract sequences for merged annotation
 gffread ${prefix}.final_all.gtf \\
-    -g $genome_fasta \\
+    -g $fasta \\
     -w ${prefix}.final_all.fa \\
     -W
 
 # Extract lncRNA sequences only
 gffread $lncrna_gtf \\
-    -g $genome_fasta \\
+    -g $fasta \\
     -w ${prefix}.lncrna_only.fa \\
     -W
 
 # Extract protein-coding sequences only
 gffread $protein_coding_gtf \\
-    -g $genome_fasta \\
+    -g $fasta \\
     -w ${prefix}.protein_only.fa \\
     -W
 

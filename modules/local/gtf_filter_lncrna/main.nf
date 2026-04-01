@@ -9,6 +9,7 @@ process GTF_FILTER_LNCRNA {
 
     input:
     path gtf
+    val lncrna_biotypes
 
     output:
     path "*.lncrna.gtf"   , emit: lncrna_gtf

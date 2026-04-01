@@ -1,5 +1,5 @@
-process PLEK {
-    tag "plek"
+process PLEK_RUN {
+    tag "plek_run"
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
@@ -8,11 +8,12 @@ process PLEK {
         'biocontainers/plek:1.2--py311h8ddd9a4_10' }"
 
     input:
-    tuple val(meta), path(fasta)        // From ch_filtered_exons_fa
+    tuple val(meta), path(fasta)        // FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_fasta
 
     output:
-    tuple val(meta), path("*.plek.tsv"), emit: plek_results
-    path "versions.yml"                , emit: versions
+    tuple val(meta), path("*.plek.txt") ,  emit: plek_raw
+    tuple val(meta), path(fasta)        ,  emit: fasta
+    path "versions.yml"                 ,  emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -25,22 +26,18 @@ process PLEK {
         -fasta $fasta \\
         -out ${prefix}.plek.txt \\
         -thread $task.cpus \\
-        $args
-
-    python convert_plek_output.py \\
-        --input ${prefix}.plek.txt \\
-        --output ${prefix}.plek.tsv
+        $args || true
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        plek: \$(PLEK.py -v 2>&1 | grep -oP 'PLEK \\K[0-9.]+' || echo "1.2")
+        plek: "1.2"
     END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.plek.tsv
+    touch ${prefix}.plek.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

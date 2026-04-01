@@ -7,8 +7,8 @@ container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity
     'biocontainers/gffcompare:0.12.10--h9948957_0' }"
 
 input:
-tuple val(meta), path(novel_lncrna_gtf)
-path known_lncrna_gtf
+tuple val(meta), path(novel_lncrna_gtf)     // IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf
+path known_lncrna_gtf                       // PREPARE_GENOME.out.known_lncrna_gtf
 
 output:
 tuple val(meta), path("*.truly_novel.gtf"), emit: gtf

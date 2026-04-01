@@ -116,7 +116,7 @@ def main():
     gtf = "$gtf"
     prefix = "$task.ext.prefix" if "$task.ext.prefix" != "null" else "${meta.id}"
     output_cis = f"{prefix}.cis_results.tsv"
-    output_trans = f"{prefix}.trans_results.tsv"
+    #output_trans = f"{prefix}.trans_results.tsv"
 
     extra_args = "$task.ext.args"
 
@@ -128,8 +128,8 @@ def main():
             "--gtf", gtf,
             "--output_cis", output_cis,
         ]
-        if output_trans:
-            argv += ["--output_trans", output_trans]
+        #if output_trans:
+        #    argv += ["--output_trans", output_trans]
         if extra_args and extra_args != "null":
             argv += shlex.split(extra_args)
         sys.argv = argv
@@ -138,7 +138,7 @@ def main():
     parser.add_argument('--expression', required=True, help='Expression matrix (genes x samples)')
     parser.add_argument('--gtf', required=True, help='GTF file for coordinates')
     parser.add_argument('--output_cis', required=True, help='Output file for Cis results')
-    parser.add_argument('--output_trans', required=False, help='Output file for Trans results (optional)')
+    #parser.add_argument('--output_trans', required=False, help='Output file for Trans results (optional)')
     parser.add_argument('--window', type=int, default=100000, help='Window size for Cis interaction (bp) [default: 100000]')
     parser.add_argument('--method', choices=['pearson', 'spearman'], default='pearson', help='Correlation method')
     parser.add_argument('--min_corr', type=float, default=0.3, help='Minimum correlation to report')
@@ -164,8 +164,8 @@ def main():
         print("Warning: Expression matrix has fewer than 2 samples. Correlation analysis cannot be performed.", file=sys.stderr)
         # Create empty output files and exit successfully
         pd.DataFrame(columns=['lncRNA_ID', 'lncRNA_Name', 'Gene_ID', 'Gene_Name', 'Chromosome', 'Distance', 'Correlation', 'P_value', 'FDR']).to_csv(args.output_cis, sep='\t', index=False)
-        if args.output_trans:
-            pd.DataFrame(columns=['lncRNA_ID', 'Gene_ID', 'Correlation', 'P_value']).to_csv(args.output_trans, sep='\t', index=False)
+        #if args.output_trans:
+        #    pd.DataFrame(columns=['lncRNA_ID', 'Gene_ID', 'Correlation', 'P_value']).to_csv(args.output_trans, sep='\t', index=False)
         return
 
     if df.shape[1] < 3:
@@ -313,11 +313,11 @@ def main():
     cis_df.to_csv(args.output_cis, sep='\t', index=False)
 
     # 5. Trans Analysis (Optional)
-    if args.output_trans:
-        print("Trans analysis not fully implemented in this version (computational intensity).", file=sys.stderr)
-        # Placeholder or simplified version could go here
-        with open(args.output_trans, 'w') as f:
-            f.write("# Trans analysis placeholder")
+    #if args.output_trans:
+    #    print("Trans analysis not fully implemented in this version (computational intensity).", file=sys.stderr)
+    #    # Placeholder or simplified version could go here
+    #    with open(args.output_trans, 'w') as f:
+    #        f.write("# Trans analysis placeholder")
 
 def format_yaml_like(data, indent: int = 0) -> str:
     yaml_str = ""

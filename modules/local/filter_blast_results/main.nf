@@ -3,8 +3,8 @@ process FILTER_BLAST_RESULTS {
     label 'process_high'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/blast:2.16.0--h66d330f_4' :
-        'biocontainers/blast:2.17.0--h66d330f_0' }"
+        'https://depot.galaxyproject.org/singularity/biopython:1.79' :
+        'biocontainers/biopython:1.65' }"
 
     input:
     tuple val(meta), path(lncrna_fasta)         // tuple val(meta), path(fasta)

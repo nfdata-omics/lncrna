@@ -501,6 +501,11 @@
                 }
             }
         },
+        "lncrna_biotypes": {
+            "type": "string",
+            "default": "lncRNA,lincRNA,antisense,sense_intronic,sense_overlapping,processed_transcript,non_coding",
+            "description": "Comma-separated list of GTF biotypes to consider as lncRNA."
+        },
         "skip_process": {
             "title": "skip process",
             "type": "object",

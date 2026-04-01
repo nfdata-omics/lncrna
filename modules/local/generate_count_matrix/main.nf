@@ -11,6 +11,7 @@ process GENERATE_COUNT_MATRIX {
     path count_files  // All count files from samples
     path gtf          // GTF annotation
     val method        // Quantification method used
+    val lncrna_biotypes
 
     output:
     path "*.count_matrix.tsv"    , emit: matrix

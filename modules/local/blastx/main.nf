@@ -27,7 +27,7 @@ process BLASTX {
     # Run BLASTx against protein database
     blastx \\
         -query $lncrna_fasta \\
-        -db $blast_protein_db \\
+        -db $blast_protein_db/proteins.fasta \\
         -evalue $evalue \\
         -num_threads $task.cpus \\
         -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore" \\

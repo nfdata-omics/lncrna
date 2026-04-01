@@ -7,8 +7,8 @@ process CPAT_BUILD_MODEL {
         'biocontainers/cpat:3.0.5--py39hff726c5_4' }"
 
     input:
-    path coding_fasta           // From ch_cds_ref
-    path noncoding_fasta        // From ch_lncrna_ref
+    path coding_fasta           // From ch_cds_fasta
+    path noncoding_fasta        // From ch_lncrna_fasta
 
     output:
     path "*.Hexamer.tsv"       , emit: hexamer

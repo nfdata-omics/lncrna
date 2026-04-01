@@ -4,8 +4,8 @@ process COMBINE_PREDICTIONS {
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/python:3.9--1' :
-        'biocontainers/python:3.9--1' }"
+        'https://depot.galaxyproject.org/singularity/biopython:1.79' :
+        'biocontainers/biopython:1.65' }"
 
     input:
     tuple val(meta1), path(cpat_results)
@@ -19,6 +19,7 @@ process COMBINE_PREDICTIONS {
     tuple val(meta4), path("*.final_lncrna.gtf")   , emit: lncrna_gtf
     tuple val(meta5), path("*.final_lncrna.fa")    , emit: lncrna_fasta
     path "*.prediction_summary.tsv"                , emit: summary
+    path "*.prediction_summary_lncrna.tsv"         , emit: lncrna_pred_summary
     path "*.lncrna_report.txt"                     , emit: report
     path "versions.yml"                            , emit: versions
 

@@ -9,6 +9,7 @@ process FILTER_GTF_BY_CLASSCODE {
 
     input:
     path gtf
+    path ref_gtf
 
     output:
     path "*.filtered.gtf"       , emit: filtered_gtf

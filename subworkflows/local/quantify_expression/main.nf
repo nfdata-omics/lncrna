@@ -18,6 +18,7 @@ workflow QUANTIFY_EXPRESSION {
     ch_versions = Channel.empty()
     ch_counts = Channel.empty()
     ch_summary = Channel.empty()
+    ch_multiqc_files = Channel.empty()
 
     // Set default to featurecounts
     def method = counts_method ?: 'featurecounts'
@@ -47,6 +48,7 @@ workflow QUANTIFY_EXPRESSION {
             ch_featurecounts
         )
         ch_counts = SUBREAD_FEATURECOUNTS.out.counts
+        ch_multiqc_files = ch_multiqc_files.mix(SUBREAD_FEATURECOUNTS.out.summary.collect{it[1]})
 //        ch_versions = ch_versions.mix(SUBREAD_FEATURECOUNTS.out.versions.first())
     }
 
@@ -72,4 +74,5 @@ workflow QUANTIFY_EXPRESSION {
     counts   = ch_counts               // tuple val(meta), path(counts)
     summary  = ch_summary              // tuple val(meta), path(summary)
     versions = ch_versions.ifEmpty(null)
+    multiqc_files   = ch_multiqc_files
 }

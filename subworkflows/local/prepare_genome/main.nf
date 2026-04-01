@@ -62,7 +62,8 @@ workflow PREPARE_GENOME {
     gencode                  //   boolean: whether the genome is from GENCODE
     ncrna_fasta              //      file: /path/to/ncrnas.fasta [OPTIONAL]
     validate_scaffolds       //   boolean: Validate scaffolds exist in FASTA (default: true)
-    filter_lncrna_gtf        //   boolean: Filter GTF to only lncRNA (default: false)
+    //filter_lncrna_gtf        //   boolean: Filter GTF to only lncRNA (default: false)
+    lncrna_biotypes             //     String: lncRNAs types to search for
     featurecounts_group_type //    string: The attribute type used to group feature types in the GTF file when generating the biotype plot with featureCounts
     aligner                  //    string: Specifies the alignment algorithm to use - available options are 'star_salmon', 'star_rsem' and 'hisat2'
     pseudo_aligner           //    string: Specifies the pseudo aligner to use - available options are 'salmon'. Runs in addition to '--aligner'
@@ -137,14 +138,8 @@ workflow PREPARE_GENOME {
         }
 
         // Filter to lncRNA only (optional)
-        if (filter_lncrna_gtf) {
-            GTF_FILTER_LNCRNA ( ch_gtf_validated )
-            ch_gtf_to_use = GTF_FILTER_LNCRNA.out.lncrna_gtf
+        GTF_FILTER_LNCRNA ( ch_gtf_validated, lncrna_biotypes )
             ch_known_lncrna_gtf = GTF_FILTER_LNCRNA.out.lncrna_gtf
-//            ch_versions = ch_versions.mix(GTF_FILTER_LNCRNA.out.versions)
-        } else {
-            ch_gtf_to_use = ch_gtf_validated
-        }
 
         // Update main GTF reference
         ch_gtf = ch_gtf_validated
@@ -207,7 +202,7 @@ workflow PREPARE_GENOME {
     } else {
         // Extract transcripts from genome only if annotation is available
         if (gtf || gff) {
-            ch_gtf_fasta_inputs = ch_gtf_to_use
+            ch_gtf_fasta_inputs = ch_gtf_validated // ch_gtf_to_use
                 .combine(ch_fasta)
                 .map { gtf, fasta -> [ [id:'transcripts'], gtf, fasta] }
                 .multiMap { meta, gtf, fasta ->
@@ -448,7 +443,7 @@ workflow PREPARE_GENOME {
     ch_mrna_fasta = EXTRACT_MRNA_SEQUENCES.out.fasta
 //    ch_versions = ch_versions.mix(EXTRACT_MRNA_SEQUENCES.out.versions)
 
-    EXTRACT_LNCRNA_SEQUENCES ( ch_fasta, ch_gtf )
+    EXTRACT_LNCRNA_SEQUENCES ( ch_fasta, ch_known_lncrna_gtf,  lncrna_biotypes )
     ch_lncrna_fasta = EXTRACT_LNCRNA_SEQUENCES.out.fasta
 //    ch_versions = ch_versions.mix(EXTRACT_LNCRNA_SEQUENCES.out.versions)
 
@@ -489,6 +484,7 @@ workflow PREPARE_GENOME {
     mrna_fasta       = ch_mrna_fasta
     lncrna_fasta     = ch_lncrna_fasta
     known_lncrna_gtf = ch_known_lncrna_gtf
+    //lncrna_gtf       = ch_lncrna_gtf
     ncrna_fasta      = ch_ncrna_fasta
     blast_protein_db = ch_blast_protein_db
     versions         = ch_versions.ifEmpty(null) // channel: [ versions.yml ]

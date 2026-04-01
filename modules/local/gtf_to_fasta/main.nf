@@ -7,8 +7,8 @@ process GTF_TO_FASTA {
         'biocontainers/gffread:0.12.7--h077b44d_6' }"
 
     input:
-    tuple val(meta), path(gtf)
-    path fasta
+    tuple val(meta), path(gtf)      // FILTER_KNOWN_LNCRNA.out.gtf
+    path fasta                      // PREPARE_GENOME.out.fasta
 
     output:
     tuple val(meta), path("*.transcripts.fa"), emit: fasta

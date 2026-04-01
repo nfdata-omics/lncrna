@@ -32,7 +32,7 @@ def parse_cpat(cpat_file):
             fields = line.strip().split('\t')
             if len(fields) >= 6:
                 transcript_id = fields[0]
-                coding_prob = float(fields[5])
+                coding_prob = float(fields[10])
                 # CPAT: coding_prob < 0.364 = Non-coding (for human)
                 pred = 'Non-coding' if coding_prob < 0.364 else 'Coding'
                 predictions[transcript_id] = {
@@ -109,13 +109,13 @@ def consensus_vote(cpat_pred, feelnc_pred, plek_pred, mode='majority'):
     total_votes = len(votes)
 
     if mode == 'strict':
-        return 'lncRNA' if non_coding_count == total_votes else 'mRNA'
+        return 'lncRNA' if non_coding_count == total_votes else 'Coding Potential Evidence'
     elif mode == 'majority':
-        return 'lncRNA' if non_coding_count >= (total_votes / 2) else 'mRNA'
+        return 'lncRNA' if non_coding_count >= (total_votes / 2) else 'Coding Potential Evidence'
     elif mode == 'lenient':
-        return 'lncRNA' if non_coding_count >= 1 else 'mRNA'
+        return 'lncRNA' if non_coding_count >= 1 else 'Coding Potential Evidence'
     else:
-        return 'lncRNA' if non_coding_count >= 2 else 'mRNA'
+        return 'lncRNA' if non_coding_count >= 2 else 'Coding Potential Evidence'
 
 
 def combine_predictions(cpat_file, feelnc_file, plek_file, gtf_file,
@@ -134,7 +134,7 @@ def combine_predictions(cpat_file, feelnc_file, plek_file, gtf_file,
 
     # Consensus voting
     final_predictions = {}
-    stats = {'lncRNA': 0, 'mRNA': 0}
+    stats = {'lncRNA': 0, 'Coding Potential Evidence': 0}
 
     for transcript_id in all_transcripts:
         cpat = cpat_preds.get(transcript_id)
@@ -155,7 +155,7 @@ def combine_predictions(cpat_file, feelnc_file, plek_file, gtf_file,
 
         stats[consensus] += 1
 
-    print(f"Consensus results: {stats['lncRNA']} lncRNAs, {stats['mRNA']} mRNAs",
+    print(f"Consensus results: {stats['lncRNA']} lncRNAs, {stats['Coding Potential Evidence']} Coding Potential Evidence",
           file=sys.stderr)
 
     # Filter lncRNAs
@@ -167,6 +167,17 @@ def combine_predictions(cpat_file, feelnc_file, plek_file, gtf_file,
         out.write("transcript_id\tconsensus\tcpat\tfeelnc\tplek\t"
                   "cpat_score\tfeelnc_score\tplek_score\\n")
         for tid in sorted(all_transcripts):
+            pred = final_predictions[tid]
+            out.write(f"{tid}\t{pred['consensus']}\t{pred['cpat']}\t"
+                      f"{pred['feelnc']}\t{pred['plek']}\t"
+                      f"{pred['cpat_score']}\t{pred['feelnc_score']}\t"
+                      f"{pred['plek_score']}\\n")
+
+    # Write lncRNA-only summary
+    with open(f"{output_prefix}.prediction_summary_lncrna.tsv", 'w') as out:
+        out.write("transcript_id\tconsensus\tcpat\tfeelnc\tplek\t"
+                  "cpat_score\tfeelnc_score\tplek_score\\n")
+        for tid in sorted(lncrna_ids):
             pred = final_predictions[tid]
             out.write(f"{tid}\t{pred['consensus']}\t{pred['cpat']}\t"
                       f"{pred['feelnc']}\t{pred['plek']}\t"
@@ -199,9 +210,9 @@ def combine_predictions(cpat_file, feelnc_file, plek_file, gtf_file,
         report.write(f"Consensus mode: {mode}\\n\\n")
         report.write(f"Total transcripts analyzed: {len(all_transcripts)}\\n")
         report.write(f"Predicted lncRNAs: {stats['lncRNA']} ({stats['lncRNA']/len(all_transcripts)*100:.2f}%)\\n")
-        report.write(f"Predicted mRNAs: {stats['mRNA']} ({stats['mRNA']/len(all_transcripts)*100:.2f}%)\\n")
+        report.write(f"Predicted Coding Potential Evidence: {stats['Coding Potential Evidence']} ({stats['Coding Potential Evidence']/len(all_transcripts)*100:.2f}%)\\n")
 
-    print(f"✓ Final lncRNA set: {len(lncrna_ids)} transcripts", file=sys.stderr)
+    print(f"Final lncRNA set: {len(lncrna_ids)} transcripts", file=sys.stderr)
 
 
 def main():

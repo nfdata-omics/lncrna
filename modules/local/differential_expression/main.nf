@@ -7,7 +7,6 @@ process DIFFERENTIAL_EXPRESSION {
 
     input:
     tuple val(meta), path(count_matrix)
-    //path gene_info
     path design_file
     val   contrast
     val   LFC
@@ -22,20 +21,21 @@ process DIFFERENTIAL_EXPRESSION {
     val de_method
 
     output:
-     tuple val(meta), path("DE_*/*DGE_QLF_*.xlsx")          , emit: results_xlsx, optional: true
+    tuple val(meta), path("DE_*/*DGE_QLF_*.xlsx")          , emit: results_xlsx, optional: true
     tuple val(meta), path("DE_*/*DGE_LRT_*.txt")           , emit: results_lrt , optional: true
     tuple val(meta), path("DE_*/*normalized_CPM_*.csv")    , emit: normalized  , optional: true
     tuple val(meta), path("DE_*/*DGE_summary_*.txt")       , emit: summary     , optional: true
+    tuple val(meta), path("DE_*/*DGE_summary_*.tsv")       , emit: summary_tsv     , optional: true
     tuple val(meta), path("DE_*/plots/png/*.png")          , emit: plots_png   , optional: true
     tuple val(meta), path("DE_*/plots/pdf/*.pdf")          , emit: plots_pdf   , optional: true
-    path "MDS.png"                                        , emit: mds_png     , optional: true
-    path "PCA.png"                                        , emit: pca_png     , optional: true
-    path "heatmap_global.png"                             , emit: heatmap_png , optional: true
-    path "MDS.pdf"                                        , emit: mds_pdf     , optional: true
-    path "PCA.pdf"                                        , emit: pca_pdf     , optional: true
-    path "heatmap_global.pdf"                             , emit: heatmap_pdf , optional: true
-    path "DGE_lncRNAs.RData"                              , emit: rdata       , optional: true
-    path "versions.yml"                                   , emit: versions
+    tuple val(meta), path("DE_*/MDS_mqc.png")              , emit: mds_png     , optional: true
+    tuple val(meta), path("DE_*/PCA_mqc.png")              , emit: pca_png     , optional: true
+    tuple val(meta), path("DE_*/heatmap_global_mqc.png")   , emit: heatmap_png , optional: true
+    tuple val(meta), path("DE_*/MDS.pdf")                  , emit: mds_pdf     , optional: true
+    tuple val(meta), path("DE_*/PCA.pdf")                  , emit: pca_pdf     , optional: true
+    tuple val(meta), path("DE_*/heatmap_global.pdf")       , emit: heatmap_pdf , optional: true
+    tuple val(meta), path("DE_*/DGE_lncRNAs.RData")        , emit: rdata       , optional: true
+    path "versions.yml"                                    , emit: versions
 
     when:
     task.ext.when == null || task.ext.when

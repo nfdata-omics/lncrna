@@ -139,9 +139,12 @@ def main():
     counts_str = "$count_files"
     gtf = "$gtf"
     method = "$method"
+    biotypes_str = "$lncrna_biotypes"
     prefix = "$task.ext.prefix" if "$task.ext.prefix" != "null" else "expression"
 
     count_files = counts_str.split()
+
+    biotypes = set(bt.strip() for bt in biotypes_str.split(',') if bt.strip())
 
     print(f"Merging {len(count_files)} count files using {method} format...", file=sys.stderr)
 
@@ -161,7 +164,7 @@ def main():
     gene_info.to_csv(gene_info_path, sep='\\t')
 
     if not gene_info.empty and 'gene_type' in gene_info.columns:
-        lncrna_ids = gene_info.index[gene_info['gene_type'] == 'lncRNA']
+        lncrna_ids = gene_info.index[gene_info['gene_type'].isin(biotypes)]
         if len(lncrna_ids) > 0:
             lncrna_matrix = count_matrix.loc[count_matrix.index.intersection(lncrna_ids)]
             lncrna_output = f"{prefix}.lncrna_matrix.tsv"

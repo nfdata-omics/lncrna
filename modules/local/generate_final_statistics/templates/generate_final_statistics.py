@@ -49,13 +49,13 @@ def create_cpat_comparison_plot(cpat_lncrna_df, cpat_coding_df, output_file):
 
     combined = pd.concat(
         [
-            cpat_lncrna_df[['coding_prob', 'Type']],
-            cpat_coding_df[['coding_prob', 'Type']],
+            cpat_lncrna_df[['Coding_prob', 'Type']],
+            cpat_coding_df[['Coding_prob', 'Type']],
         ]
     )
 
     plt.figure(figsize=(8, 6))
-    sns.boxplot(data=combined, x='Type', y='coding_prob', palette=['#3498db', '#e74c3c'])
+    sns.boxplot(data=combined, x='Type', y='Coding_prob', palette=['#3498db', '#e74c3c'])
     plt.ylabel('CPAT Coding Probability', fontsize=12)
     plt.xlabel('')
     plt.title('Coding Potential: lncRNAs vs Protein-coding Genes', fontsize=14)
@@ -211,12 +211,12 @@ def main():
         'total_transcripts': total_transcripts,
         'lncrna_genes': lncrna_genes,
         'lncrna_transcripts': lncrna_transcripts,
-        'cpat_lncrna_mean': cpat_lncrna_df['coding_prob'].mean(),
-        'cpat_lncrna_median': cpat_lncrna_df['coding_prob'].median(),
-        'cpat_lncrna_std': cpat_lncrna_df['coding_prob'].std(),
-        'cpat_coding_mean': cpat_coding_df['coding_prob'].mean(),
-        'cpat_coding_median': cpat_coding_df['coding_prob'].median(),
-        'cpat_coding_std': cpat_coding_df['coding_prob'].std(),
+        'cpat_lncrna_mean': cpat_lncrna_df['Coding_prob'].mean(),
+        'cpat_lncrna_median': cpat_lncrna_df['Coding_prob'].median(),
+        'cpat_lncrna_std': cpat_lncrna_df['Coding_prob'].std(),
+        'cpat_coding_mean': cpat_coding_df['Coding_prob'].mean(),
+        'cpat_coding_median': cpat_coding_df['Coding_prob'].median(),
+        'cpat_coding_std': cpat_coding_df['Coding_prob'].std(),
         'classification_counts': classification_counts,
     }
 
@@ -229,10 +229,10 @@ def main():
 
     print("Writing summary TSV...", file=sys.stderr)
     with open(f"{prefix}.statistics_summary.tsv", 'w') as f:
-        f.write("Metric\tValue\n")
+        f.write("Metric\tValue\\n")
         for key, value in stats_dict.items():
             if key != 'classification_counts':
-                f.write(f"{key}\t{value}\n")
+                f.write(f"{key}\t{value}\\n")
 
     print("Done!", file=sys.stderr)
 

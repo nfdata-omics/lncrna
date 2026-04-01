@@ -10,43 +10,71 @@ Written by Karla Ruiz. Released under the MIT license.
 import logging
 import argparse
 import re
-import statistics
-from typing import Optional, Set
 import platform
+from typing import Optional, Set
 
 logging.basicConfig(format="%(name)s - %(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger("filter_gtf_lncrna")
 logger.setLevel(logging.INFO)
 
-
-def tab_delimited(file: str) -> float:
-    """Check if file is tab-delimited and return median number of tabs."""
-    with open(file, "r") as f:
-        data = f.read(102400)
-        tabs_per_line = [line.count("\\t") for line in data.split("\\n") if line.strip()]
-        return statistics.median(tabs_per_line) if tabs_per_line else 0
+# Compile regex once at module level
+TRANSCRIPT_ID_RE = re.compile(r'transcript_id "([^"]+)"')
+GENE_ID_RE       = re.compile(r'gene_id "([^"]+)"')
+ATTR_RE          = {}  # cache for dynamic attribute patterns
 
 
 def extract_attribute(attributes_str: str, attribute_name: str) -> Optional[str]:
-    """
-    Extract attribute value from GTF attributes string.
+    """Extract attribute value from GTF attributes string."""
+    if attribute_name not in ATTR_RE:
+        ATTR_RE[attribute_name] = re.compile(f'{attribute_name} "([^"]+)"')
+    match = ATTR_RE[attribute_name].search(attributes_str)
+    return match.group(1) if match else None
 
-    Example: gene_id "ENSG00000000003"; gene_name "DDX11L1"
-    Returns: ENSG00000000003
+
+def is_lncrna_biotype(attributes_str: str, biotypes: set) -> bool:
+    return any(
+        f'gene_type "{bt}"'          in attributes_str or
+        f'gene_biotype "{bt}"'       in attributes_str or
+        f'transcript_type "{bt}"'    in attributes_str or
+        f'transcript_biotype "{bt}"' in attributes_str
+        for bt in biotypes
+    )
+
+def detect_biotype_attribute(gtf_file: str) -> Optional[str]:
     """
-    pattern = f'{attribute_name} "([^"]+)"'
-    match = re.search(pattern, attributes_str)
-    if match:
-        return match.group(1)
+    Detect which biotype attribute the GTF uses.
+    Returns the attribute name or None if not found.
+    """
+    candidates = ['gene_type', 'gene_biotype', 'transcript_type', 'transcript_biotype']
+    with open(gtf_file) as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+            for candidate in candidates:
+                if candidate in line:
+                    return candidate
     return None
 
 
-def is_lncrna_biotype(attributes_str: str) -> bool:
-    """Check if an attribute string contains lncRNA biotype."""
-    return ('gene_type "lncRNA"' in attributes_str or
-            'gene_biotype "lncRNA"' in attributes_str or
-            'transcript_type "lncRNA"' in attributes_str or
-            'transcript_biotype "lncRNA"' in attributes_str)
+def validate_gtf(file: str) -> None:
+    """
+    Validate that the file looks like a GTF:
+    checks that non-comment lines have exactly 9 tab-separated fields.
+    Raises ValueError if the file does not pass validation.
+    """
+    with open(file, "r") as f:
+        for i, line in enumerate(f):
+            if line.startswith('#') or not line.strip():
+                continue
+            fields = line.strip().split('\t')
+            if len(fields) != 9:
+                raise ValueError(
+                    f"Invalid GTF: line {i+1} has {len(fields)} fields (expected 9).\\n"
+                    f"  Line: {line.strip()[:120]}"
+                )
+            # Only check the first 100 data lines for speed
+            if i > 100:
+                break
 
 
 def format_yaml_like(data, indent: int = 0) -> str:
@@ -60,161 +88,183 @@ def format_yaml_like(data, indent: int = 0) -> str:
     return yaml_str
 
 
-def filter_gtf_lncrna(gtf_in: str, filtered_gtf_out: str) -> None:
+def filter_gtf_lncrna(gtf_in: str, filtered_gtf_out: str, biotypes: Set[str]) -> None:
     """
     Filter GTF file to extract only lncRNA entries.
 
-    First pass: Identify all lncRNA gene IDs and transcript IDs
-    Second pass: Write only lines associated with lncRNA entries
+    First pass:  identify all lncRNA transcript IDs from 'gene' and 'transcript' features.
+    Second pass: write lines whose transcript_id is in the lncRNA set.
     """
 
-    if tab_delimited(gtf_in) != 8:
-        raise ValueError("Invalid GTF file: Expected 9 tab-separated columns.")
+    validate_gtf(gtf_in)
 
-    # Track lncRNA gene and transcript IDs
-    lncrna_gene_ids: Set[str] = set()
+    # Warn if no biotype attribute is detected in the GTF
+    biotype_attr = detect_biotype_attribute(gtf_in)
+    if biotype_attr is None:
+        logger.warning(
+            "No biotype attribute found in GTF. Transcripts may not be correctly classified. "
+            "Expected one of: gene_type, gene_biotype, transcript_type, transcript_biotype"
+        )
+
+    # --- First pass: collect lncRNA transcript IDs ---
     lncrna_transcript_ids: Set[str] = set()
+    gene_count       = 0
+    transcript_count = 0
 
     logger.info(f"First pass: identifying lncRNA entries in {gtf_in}")
 
-    # First pass: collect lncRNA IDs
-    gene_count = 0
-    transcript_count = 0
+    with open(gtf_in) as gtf:
+        for line in gtf:
+            if line.startswith('#') or not line.strip():
+                continue
 
-    try:
-        with open(gtf_in) as gtf:
-            for line in gtf:
-                if line.startswith('#'):
-                    continue
+            fields = line.strip().split('\t')
+            if len(fields) < 9:
+                continue
 
-                fields = line.strip().split('\t')
-                if len(fields) < 9:
-                    continue
+            feature_type = fields[2]
+            attributes   = fields[8]
 
-                feature_type = fields[2]
-                attributes = fields[8]
+            if not is_lncrna_biotype(attributes, biotypes):
+                continue
 
-                # Process gene features
-                if feature_type == 'gene':
-                    if is_lncrna_biotype(attributes):
-                        gene_id = extract_attribute(attributes, 'gene_id')
-                        if gene_id:
-                            lncrna_gene_ids.add(gene_id)
-                            gene_count += 1
+            if feature_type == 'gene':
+                # Count lncRNA genes (informational only)
+                gene_count += 1
 
-                # Process transcript features
-                elif feature_type == 'transcript':
-                    if is_lncrna_biotype(attributes):
-                        transcript_id = extract_attribute(attributes, 'transcript_id')
-                        gene_id = extract_attribute(attributes, 'gene_id')
+            elif feature_type == 'transcript':
+                transcript_id = extract_attribute(attributes, 'transcript_id')
+                if transcript_id:
+                    lncrna_transcript_ids.add(transcript_id)
+                    transcript_count += 1
 
-                        if transcript_id:
-                            lncrna_transcript_ids.add(transcript_id)
-                            transcript_count += 1
-                        if gene_id:
-                            lncrna_gene_ids.add(gene_id)
+    logger.info(f"Identified {gene_count} lncRNA genes")
+    logger.info(f"Identified {transcript_count} lncRNA transcripts")
 
-        logger.info(f"Identified {gene_count} lncRNA genes")
-        logger.info(f"Identified {transcript_count} lncRNA transcripts")
+    if transcript_count == 0:
+        logger.warning("No lncRNA entries found in GTF file!")
 
-        if gene_count == 0 and transcript_count == 0:
-            logger.warning("No lncRNA entries found in GTF file!")
+    # --- Second pass: write filtered GTF ---
+    logger.info(f"Second pass: writing filtered GTF to {filtered_gtf_out}")
 
-        # Second pass: write filtered GTF
-        logger.info(f"Second pass: writing filtered GTF to {filtered_gtf_out}")
+    # Features that belong to a transcript (resolved via transcript_id)
+    TRANSCRIPT_FEATURES = {'exon', 'UTR', 'CCDS'}
 
-        written_lines = 0
-        written_genes = 0
-        written_transcripts = 0
-        written_features = 0
+    written_lines       = 0
+    written_genes       = 0
+    written_transcripts = 0
+    written_features    = 0
 
-        with open(gtf_in) as infile, open(filtered_gtf_out, "w") as outfile:
-            for line in infile:
-                # Always keep header lines
-                if line.startswith('#'):
-                    outfile.write(line)
-                    continue
+    with open(gtf_in) as infile, open(filtered_gtf_out, "w") as outfile:
+        for line in infile:
+            if line.startswith('#'):
+                outfile.write(line)
+                continue
 
-                fields = line.strip().split('\t')
-                if len(fields) < 9:
-                    continue
+            if not line.strip():
+                continue
 
-                feature_type = fields[2]
-                attributes = fields[8]
+            fields = line.strip().split('\t')
+            if len(fields) < 9:
+                continue
 
-                keep_line = False
+            feature_type = fields[2]
+            attributes   = fields[8]
+            keep_line    = False
 
-                # Keep lncRNA gene entries
-                if feature_type == 'gene':
-                    if is_lncrna_biotype(attributes):
-                        keep_line = True
-                        written_genes += 1
+            if feature_type == 'gene':
+                # Keep gene lines that are lncRNA biotype
+                if is_lncrna_biotype(attributes, biotypes):
+                    keep_line = True
+                    written_genes += 1
 
-                # Keep lncRNA transcript entries
-                elif feature_type == 'transcript':
-                    if is_lncrna_biotype(attributes):
-                        keep_line = True
-                        written_transcripts += 1
+            elif feature_type == 'transcript':
+                # Keep transcript lines whose ID is in our lncRNA set
+                transcript_id = extract_attribute(attributes, 'transcript_id')
+                if transcript_id and transcript_id in lncrna_transcript_ids:
+                    keep_line = True
+                    written_transcripts += 1
 
-                # Keep feature entries (exon, CDS, etc.) associated with lncRNA transcripts
-                elif feature_type in ['exon', 'CDS', 'start_codon', 'stop_codon',
-                                      'Selenocysteine', 'UTR', 'CCDS']:
-                    transcript_id = extract_attribute(attributes, 'transcript_id')
-                    if transcript_id and transcript_id in lncrna_transcript_ids:
-                        keep_line = True
-                        written_features += 1
+            elif feature_type in TRANSCRIPT_FEATURES:
+                # Keep sub-transcript features that belong to an lncRNA transcript
+                transcript_id = extract_attribute(attributes, 'transcript_id')
+                if transcript_id and transcript_id in lncrna_transcript_ids:
+                    keep_line = True
+                    written_features += 1
 
-                if keep_line:
-                    outfile.write(line)
-                    written_lines += 1
+            # Note: CDS, start_codon, stop_codon are NOT included
+            # because lncRNAs are non-coding by definition
 
-        if written_lines == 0:
-            logger.warning("No lncRNA lines written to output file!")
-        else:
-            logger.info(f"Wrote {written_lines} total lines to {filtered_gtf_out}")
-            logger.info(f"  - {written_genes} gene entries")
-            logger.info(f"  - {written_transcripts} transcript entries")
-            logger.info(f"  - {written_features} feature entries (exon, CDS, etc.)")
+            if keep_line:
+                outfile.write(line)
+                written_lines += 1
 
-    except IOError as e:
-        logger.error(f"File operation failed: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        raise
+    if written_lines == 0:
+        logger.warning("No lncRNA lines written to output file!")
+    else:
+        logger.info(f"Wrote {written_lines} total lines to {filtered_gtf_out}")
+        logger.info(f"  - {written_genes} gene entries")
+        logger.info(f"  - {written_transcripts} transcript entries")
+        logger.info(f"  - {written_features} feature entries (exon, UTR, etc.)")
 
 
 def main():
-    gtf_in = "$gtf"
-    prefix = "$gtf.baseName" if "$gtf.baseName" != "null" else "lncrna"
-    log_file = f"{prefix}.filter.log"
+    parser = argparse.ArgumentParser(
+        description='Filter GTF file to extract only lncRNA entries'
+    )
+    parser.add_argument('--gtf',    required=True, help='Input GTF file')
+    parser.add_argument('--prefix', required=True, help='Output prefix')
+    parser.add_argument('--biotypes', required=True, help='Comma-separated list of lncRNA biotypes (from params.lncrna_biotypes)')
+    parser.add_argument('--log',    default=None,  help='Log file path (optional)')
+    args = parser.parse_args()
 
+    # Parse biotypes from comma-separated string into a set
+    biotypes = set(bt.strip() for bt in args.biotypes.split(',') if bt.strip())
+    if not biotypes:
+        raise ValueError("--biotypes cannot be empty")
+
+    # Set up file logging if requested
+    log_file = args.log or f"{args.prefix}.filter.log"
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(name)s - %(asctime)s %(levelname)s: %(message)s")
-    file_handler.setFormatter(formatter)
+    file_handler.setFormatter(
+        logging.Formatter("%(name)s - %(asctime)s %(levelname)s: %(message)s")
+    )
     logger.addHandler(file_handler)
 
-    output_file = f"{prefix}.lncrna.gtf"
+    output_file = f"{args.prefix}.lncrna.gtf"
 
     try:
         logger.info("Starting lncRNA GTF filtering")
-        logger.info(f"Input GTF: {gtf_in}")
+        logger.info(f"Input GTF:  {args.gtf}")
         logger.info(f"Output GTF: {output_file}")
+        logger.info(f"Biotypes:   {sorted(biotypes)}")
 
-        filter_gtf_lncrna(gtf_in, output_file)
+        filter_gtf_lncrna(args.gtf, output_file, biotypes)
 
-        logger.info(f"✓ Successfully created: {output_file}")
-        print(f"✓ Successfully created: {output_file}")
+        logger.info(f"Successfully created: {output_file}")
+        print(f"Successfully created: {output_file}")
 
     except Exception as e:
-        logger.error(f"✗ Error filtering GTF: {e}")
-        print(f"✗ Error filtering GTF: {e}")
+        logger.error(f"Error filtering GTF: {e}")
+        print(f"Error filtering GTF: {e}")
         raise
 
 
 if __name__ == '__main__':
+    import sys
+
+    # Nextflow template substitution mode
+    if len(sys.argv) == 1:
+        sys.argv = [
+            "filter_gtf_lncrna.py",
+            "--gtf",      "$gtf",
+            "--prefix",   "$gtf.baseName",
+            "--biotypes", "$lncrna_biotypes",
+        ]
+
     main()
+
     versions_this_module = {}
     versions_this_module["${task.process}"] = {"python": platform.python_version()}
     with open("versions.yml", "w") as f:

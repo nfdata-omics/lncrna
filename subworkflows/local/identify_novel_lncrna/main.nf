@@ -1,20 +1,24 @@
 include { FILTER_TRANSCRIPTS_LENGTH } from '../../../modules/local/filter_transcripts_length'
 include { FILTER_TRANSCRIPTS_EXONS  } from '../../../modules/local/filter_transcripts_exons'
+include { EXTRACT_MRNA_SEQUENCES    } from '../../../modules/local/extract_mrna_sequences'
 include { CPAT_BUILD_MODEL          } from '../../../modules/local/cpat_build_model'
 include { CPAT                      } from '../../../modules/local/cpat'
-include { FEELNC_CODPOT             } from '../../../modules/local/feelnc_codpot'
-include { PLEK                      } from '../../../modules/local/plek'
+include { PLEK_RUN                  } from '../../../modules/local/plek_run'
+include { PLEK_PARSE                } from '../../../modules/local/plek_parse'
+include { FEELNC_CODPOT_RUN         } from '../../../modules/local/feelnc_codpot_run'
+include { FEELNC_CODPOT_PARSE       } from '../../../modules/local/feelnc_codpot_parse'
 include { COMBINE_PREDICTIONS       } from '../../../modules/local/combine_predictions'
 
 
 workflow IDENTIFY_NOVEL_LNCRNA {
     take:
-        tmap                // gffcompare tracking file
-        ch_fasta            // genome FASTA
-        ch_gtf              // filtered GTF (i, u, x class codes)
-        ch_transcripts_fa   // transcript sequences FASTA
-        ch_cds_ref          // CDS ref from prepare genome
-        ch_lncrna_ref       // lncRNA from prepare genome
+        tmap                                  // gffcompare tracking file
+        //ch_fasta                            // genome FASTA
+        ch_lncrna_candidates_gtf              // filtered GTF (i, u, x class codes) //STRINGTIE_WORKFLOW.out.lncrna_candidates
+        ch_lncrna_candidates_fa               // transcript sequences FASTA // STRINGTIE_WORKFLOW.out.lncrna_fasta
+        ch_cds_fasta                          // CDS ref from prepare genome PREPARE_GENOME.out.cds_fasta
+        ch_lncrna_fasta                       // lncRNA from prepare genome PREPARE_GENOME.out.lncrna_fasta
+        ch_mrna_fasta                         // PREPARE_GENOME.out.mrna_fasta
 
 
     main:
@@ -24,8 +28,9 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         // FILTER: Remove short transcripts (< 200 nt)
         //
         FILTER_TRANSCRIPTS_LENGTH (
-            ch_gtf,
-            ch_transcripts_fa
+            ch_lncrna_candidates_gtf, //STRINGTIE_WORKFLOW.out.lncrna_candidates
+            //ch_transcripts_fa
+            ch_lncrna_candidates_fa //STRINGTIE_WORKFLOW.out.lncrna_fasta
         )
         ch_filtered_length_gtf = FILTER_TRANSCRIPTS_LENGTH.out.filtered_length_gtf
         ch_filtered_length_fa  = FILTER_TRANSCRIPTS_LENGTH.out.filtered_length_fasta
@@ -54,11 +59,11 @@ workflow IDENTIFY_NOVEL_LNCRNA {
             // Use provided models
             ch_cpat_hexamer = Channel.fromPath(params.cpat_hexamer)
             ch_cpat_logit = Channel.fromPath(params.cpat_logit_model)
-        } else if (ch_cds_ref && ch_lncrna_ref) {
+        } else if (ch_cds_fasta && ch_lncrna_fasta) {
             // Build models
             CPAT_BUILD_MODEL (
-                ch_cds_ref,
-                ch_lncrna_ref
+                ch_cds_fasta, //coding sequences only
+                ch_lncrna_fasta
             )
             ch_cpat_hexamer = CPAT_BUILD_MODEL.out.hexamer
             ch_cpat_logit = CPAT_BUILD_MODEL.out.logit_model
@@ -75,7 +80,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         //
         if (!params.skip_cpat) {
             CPAT (
-                ch_filtered_exons_fa,
+                ch_filtered_exons_fa, // FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_fasta
                 ch_cpat_hexamer,
                 ch_cpat_logit
             )
@@ -87,24 +92,31 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         // FEELnc: FlExible Extraction of LncRNAs
         //
         if (!params.skip_feelnc) {
-            FEELNC_CODPOT (
-                ch_filtered_exons_fa,
-                ch_fasta
+            FEELNC_CODPOT_RUN (
+                ch_filtered_exons_fa,   // FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_fasta
+                ch_mrna_fasta           // PREPARE_GENOME.out.mrna_fasta
             )
-            ch_feelnc_results = FEELNC_CODPOT.out.feelnc_results
-//            ch_versions = ch_versions.mix(FEELNC_CODPOT.out.versions)
-        }
 
+            FEELNC_CODPOT_PARSE (
+                FEELNC_CODPOT_RUN.out.codpot_full,
+                ch_filtered_exons_fa        // FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_fasta
+            )
+
+            ch_feelnc_results = FEELNC_CODPOT_PARSE.out.feelnc_results
+        }
 
         //
         // PLEK: Predictor of lncRNAs and mRNAs based on k-mer
         //
         if (!params.skip_plek) {
-            PLEK (
-                ch_filtered_exons_fa
+            PLEK_RUN (
+                ch_filtered_exons_fa        // FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_fasta
             )
-            ch_plek_results = PLEK.out.plek_results
-//            ch_versions = ch_versions.mix(PLEK.out.versions)
+
+            PLEK_PARSE (
+                PLEK_RUN.out.plek_raw
+            )
+            ch_plek_results = PLEK_PARSE.out.plek_results
         }
 
         //
@@ -120,6 +132,7 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         )
         ch_final_lncrna_gtf = COMBINE_PREDICTIONS.out.lncrna_gtf
         ch_final_lncrna_fa  = COMBINE_PREDICTIONS.out.lncrna_fasta
+        ch_lncrna_pred_summary = COMBINE_PREDICTIONS.out.lncrna_pred_summary
         ch_lncrna_report    = COMBINE_PREDICTIONS.out.report
 //        ch_versions = ch_versions.mix(COMBINE_PREDICTIONS.out.versions)
 
@@ -135,5 +148,6 @@ workflow IDENTIFY_NOVEL_LNCRNA {
         final_lncrna_gtf    = ch_final_lncrna_gtf        // Final lncRNA GTF
         final_lncrna_fasta  = ch_final_lncrna_fa         // Final lncRNA FASTA
         report              = ch_lncrna_report           // Summary report
+        lncrna_pred_summary = ch_lncrna_pred_summary     // lncrna prediction
         versions            = ch_versions
 }

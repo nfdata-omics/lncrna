@@ -18,23 +18,24 @@ include { FASTQ_ALIGN_STAR                      } from '../subworkflows/nf-core/
 include { FASTQ_ALIGN_HISAT2                    } from '../subworkflows/nf-core/fastq_align_hisat2'
 include { BAM_DEDUP_UMI as BAM_DEDUP_UMI_STAR   } from '../subworkflows/nf-core/bam_dedup_umi'
 include { BAM_DEDUP_UMI as BAM_DEDUP_UMI_HISAT2 } from '../subworkflows/nf-core/bam_dedup_umi'
-include { SUBREAD_FEATURECOUNTS                 } from '../modules/nf-core/subread/featurecounts/main'
-include { HTSEQ_COUNT                           } from '../modules/nf-core/htseq/count/main'
+//include { SUBREAD_FEATURECOUNTS                 } from '../modules/nf-core/subread/featurecounts/main'
+//include { HTSEQ_COUNT                           } from '../modules/nf-core/htseq/count/main'
 include { STRINGTIE_WORKFLOW                    } from '../subworkflows/local/stringtie'
 include { IDENTIFY_NOVEL_LNCRNA                 } from '../subworkflows/local/identify_novel_lncrna'
 include { SUMMARY_AND_CLASSIFY_LNCRNA           } from '../subworkflows/local/summary_and_classify_lncrna'
-include { EVALUATE_FINAL_LNCRNA                 } from '../subworkflows/local/evaluate_final_lncrna'
+//include { EVALUATE_FINAL_LNCRNA                 } from '../subworkflows/local/evaluate_final_lncrna'
 include { QUANTIFY_EXPRESSION                   } from '../subworkflows/local/quantify_expression'
 include { GENERATE_COUNT_MATRIX                 } from '../modules/local/generate_count_matrix'
-include { ANALYSIS_CIS_TRANS                    } from '../modules/local/analysis_cis_trans'
+include { ANALYSIS_CIS                          } from '../modules/local/analysis_cis'
+include { ANALYSIS_TRANS                        } from '../modules/local/analysis_trans'
 include { DIFFERENTIAL_EXPRESSION               } from '../modules/local/differential_expression'
 include { QUANTIFY_PSEUDO_ALIGNMENT             } from '../subworkflows/nf-core/quantify_pseudo_alignment'
-include { GENERATE_LNCRNA_REPORT                } from '../modules/local/generate_lncrna_report'
 include { MERGE_FINAL_ANNOTATION                } from '../modules/local/merge_final_annotation'
-include { CLASSIFY_LNCRNA                      } from '../modules/local/classify_lncrna'
-include { GTF_FILTER_PROTEIN_CODING            } from '../modules/local/gtf_filter_protein_coding'
-include { BAM_MARKDUPLICATES_PICARD            } from '../subworkflows/nf-core/bam_markduplicates_picard/main'
-include { FASTQC as FASTQC_TRIM                } from '../modules/nf-core/fastqc/main'
+include { CLASSIFY_LNCRNA                       } from '../modules/local/classify_lncrna'
+include { GTF_FILTER_PROTEIN_CODING             } from '../modules/local/gtf_filter_protein_coding'
+include { BAM_MARKDUPLICATES_PICARD             } from '../subworkflows/nf-core/bam_markduplicates_picard/main'
+include { FASTQC as FASTQC_TRIM                 } from '../modules/nf-core/fastqc/main'
+//include { MULTIQC_DE_CONFIG                     } from '../modules/local/multiqc_de_config'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,12 +62,13 @@ workflow LNCRNA {
     ch_ribo_db              // channel: path(sortmerna_fasta_list)
     ch_sortmerna_index      // channel: path(sortmerna/index/)
     ch_splicesites          // channel: path(genome.splicesites.txt)
-    ch_cds_ref              // channel: path(cds.gf)
-    ch_lncrna_ref           // channel: path(lncrna.gtf)
-    ch_known_lncrna_gtf     // channel: path(gtf_filtered_lncrna.gtf)
-    lncrna_fasta
+    ch_cds_fasta            // channel: path(cds.fasta)
+    ch_mrna_fasta           // channel: path(mrna.fasta)
+    ch_lncrna_fasta         // channel: path(lncrna.fasta)
+    ch_known_lncrna_gtf     // channel: path(gtf_filtered_lncrna.gtf) // PREPARE.GENOMES.known_lncrna_gtf
     blast_protein_database  // channel: path(lblast_protein_database)
     make_sortmerna_index    // boolean: Whether to create an index before running sortmerna
+
 
     main:
 
@@ -324,133 +326,31 @@ workflow LNCRNA {
     }
 
     // ==========================================
-    // Transcript assembly using Stringtie, merge GTFs, filter by classcode and create
-    // FASTA of the filtered GTF
+    // STEP 3: DEFINE REFERENCE ANNOTATION
+    // Always uses known lncRNA reference GTF — independent of novel_lncrnas
     // ==========================================
-    def ch_stringtie_merged = Channel.empty()
-    def ch_lncrna_candidates_gtf = Channel.empty()
-    def ch_lncrna_candidates_fa = Channel.empty()
-    def ch_gffcompare_annotated = Channel.empty()
-    def tmap = Channel.empty()
-
-    if (params.novel_lncrnas) {
-        STRINGTIE_WORKFLOW (
-            ch_genome_bam,
-            ch_gtf,         // path(gtf) - PREPARE_GENOME.out.gtf
-            ch_fasta,       // path(fasta) - PREPARE_GENOME.out.fasta
-            ch_fai          // path(fai) - PREPARE_GENOME.out.fai
-        )
-        ch_stringtie_merged = STRINGTIE_WORKFLOW.out.stringtie_gtf_merged
-        ch_lncrna_candidates_gtf = STRINGTIE_WORKFLOW.out.lncrna_candidates
-        ch_lncrna_candidates_fa = STRINGTIE_WORKFLOW.out.lncrna_fasta
-        ch_gffcompare_annotated = STRINGTIE_WORKFLOW.out.gffcompare_annotated
-        tmap = STRINGTIE_WORKFLOW.out.tmap
-        //ch_versions = ch_versions.mix(STRINGTIE_WORKFLOW.out.versions)
+    def ch_known_lncrna_tuple = ch_known_lncrna_gtf.map { gtf_file ->
+        def meta = [ id: 'lncrnas_classification' ] // PREPARE.GENOMES.known_lncrna_gtf
+        [ meta, gtf_file ]
     }
 
-    // ==========================================
-    // CODING POTENTIAL AND NOVEL LNCRNAS
-    // ==========================================
-    def ch_final_annotation
-    def ch_lncrna_fasta
-    def ch_lncrna_gtf
-    def ch_protein_fasta
-    def ch_lncrna_classification
-    def ch_lncrna_stats
-    def ch_cpat_hexamer
-    def ch_cpat_logit
-    def ch_cpat_plot
-    def ch_classification_plot
-    def ch_cpat_lncrna_validation
-    def ch_cpat_coding_validation
+    GTF_FILTER_PROTEIN_CODING (
+        ch_gtf                                      // PREPARE.GENOMES.out.gtf
+    )
 
-    if (params.novel_lncrnas) {
-        IDENTIFY_NOVEL_LNCRNA (
-            tmap,
-            ch_fasta,
-            ch_lncrna_candidates_gtf,
-            ch_lncrna_candidates_fa,
-            ch_cds_ref,
-            ch_lncrna_ref
-        )
+    def ch_protein_coding_gtf = GTF_FILTER_PROTEIN_CODING.out.protein_gtf
 
-        validated_lncrnas_gtf   = IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf
-        ch_cpat_hexamer         = IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
-        ch_cpat_logit           = IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
-
-        GTF_FILTER_PROTEIN_CODING (
-            ch_gtf
-        )
-        def ch_protein_coding_gtf_novel = GTF_FILTER_PROTEIN_CODING.out.protein_gtf
-
-        SUMMARY_AND_CLASSIFY_LNCRNA (
-            validated_lncrnas_gtf,
-            ch_known_lncrna_gtf,
-            ch_protein_coding_gtf_novel,
-            ch_gtf,
-            ch_fasta,
-            blast_protein_database,
-            lncrna_fasta
-        )
-
-        ch_final_annotation      = SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf
-        ch_lncrna_fasta          = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_fasta
-        ch_lncrna_gtf            = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_gtf
-        ch_protein_fasta         = SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta
-        ch_lncrna_classification = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
-        ch_lncrna_stats          = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_stats
-
-        EVALUATE_FINAL_LNCRNA (
-            ch_final_annotation,
-            ch_lncrna_gtf,
-            ch_lncrna_fasta,
-            ch_protein_fasta,
-            ch_lncrna_classification,
-            ch_cpat_hexamer,
-            ch_cpat_logit
-        )
-
-        ch_cpat_lncrna_validation = EVALUATE_FINAL_LNCRNA.out.cpat_lncrna_results
-        ch_cpat_coding_validation = EVALUATE_FINAL_LNCRNA.out.cpat_coding_results
-        ch_cpat_plot              = EVALUATE_FINAL_LNCRNA.out.cpat_plot
-        ch_classification_plot    = EVALUATE_FINAL_LNCRNA.out.classification_plot
-    }
-    else {
-        def ch_known_lncrna_tuple = ch_known_lncrna_gtf.map { gtf_file ->
-            def meta = [ id: 'lncrnas_classification' ]
-            [ meta, gtf_file ]
-        }
-
-        GTF_FILTER_PROTEIN_CODING (
-            ch_gtf
-        )
-        def ch_protein_coding_gtf = GTF_FILTER_PROTEIN_CODING.out.protein_gtf
-
-        CLASSIFY_LNCRNA (
-            ch_known_lncrna_tuple,
-            ch_protein_coding_gtf
-        )
-        ch_lncrna_classification = CLASSIFY_LNCRNA.out.classification
-        ch_lncrna_stats          = CLASSIFY_LNCRNA.out.stats
-        ch_final_annotation = ch_gtf.map { gtf_file ->
-            def meta = [ id: 'reference' ]
-            [ meta, gtf_file ]
-        }
-        ch_lncrna_fasta     = Channel.empty()
-        ch_protein_fasta    = Channel.empty()
-        ch_lncrna_gtf       = ch_known_lncrna_tuple
-
-        ch_cpat_hexamer         = Channel.empty()
-        ch_cpat_logit           = Channel.empty()
-        ch_cpat_lncrna_validation = Channel.empty()
-        ch_cpat_coding_validation = Channel.empty()
-        ch_cpat_plot              = channel.value(file("$projectDir/assets/NO_FILE_cpat"))
-        ch_classification_plot    = channel.value(file("$projectDir/assets/NO_FILE_cpat"))
+    CLASSIFY_LNCRNA (
+        ch_known_lncrna_tuple,
+        ch_protein_coding_gtf // GTF_FILTER_PROTEIN_CODING.out.protein_gtf
+    )
+    ch_lncrna_classification = CLASSIFY_LNCRNA.out.classification
+    ch_lncrna_stats          = CLASSIFY_LNCRNA.out.stats
+    ch_final_annotation = ch_gtf.map { gtf_file ->
+        def meta = [ id: 'reference' ]
+        [ meta, gtf_file ]
     }
 
-    // ==========================================
-    // Quantification step (Featurecounts/Htseq)
-    // ==========================================
     QUANTIFY_EXPRESSION (
         ch_genome_bam,                                      // BAMs originales
         ch_genome_bam_index,                                // Índices BAM
@@ -460,30 +360,41 @@ workflow LNCRNA {
     ch_counts = QUANTIFY_EXPRESSION.out.counts
     //ch_versions = ch_versions.mix(QUANTIFY_EXPRESSION.out.versions)
 
-    //
-    // Count Matrix
-    //
+    // ==========================================
+    // STEP 4: QUANTIFICATION WITH FEATURECOUNTS/HTSEQ
+    // Uses reference GTF — never novel lncRNA GTF
+    // ==========================================
+
     GENERATE_COUNT_MATRIX (
         ch_counts.collect { meta, counts -> counts },
         ch_final_annotation.map { meta, gtf -> gtf },
-        params.counts_method ?: 'featurecounts'
+        params.counts_method ?: 'featurecounts',
+        params.lncrna_biotypes      // REVISAR
         )
     ch_alignment_matrix     = GENERATE_COUNT_MATRIX.out.matrix
     ch_alignment_lncrna_matrix = GENERATE_COUNT_MATRIX.out.lncrna_matrix
     ch_alignment_gene_info  = GENERATE_COUNT_MATRIX.out.gene_info
 
-    //
-    // MODULE: Cis/Trans Analysis
-    //
-    ANALYSIS_CIS_TRANS (
+    // ==========================================
+    // STEP 5: CIS/TRANS ANALYSIS
+    // ==========================================
+    ANALYSIS_CIS (
         ch_alignment_matrix.map { matrix -> [ ['id': 'all_samples'], matrix ] },
         ch_final_annotation.map { meta, gtf -> gtf }
     )
-    ch_cis_results = ANALYSIS_CIS_TRANS.out.cis_results
+    ch_cis_results = ANALYSIS_CIS.out.cis_results
+    //ch_versions = ch_versions.mix(ANALYSIS_CIS_TRANS.out.versions)
+
+    ANALYSIS_TRANS (
+        ch_alignment_matrix.map { matrix -> [ ['id': 'all_samples'], matrix ] },
+        ch_final_annotation.map { meta, gtf -> gtf }
+    )
+    ch_trans_results = ANALYSIS_TRANS.out.trans_results
     //ch_versions = ch_versions.mix(ANALYSIS_CIS_TRANS.out.versions)
 
     // ==========================================
-    // Pseudoalignment and quantification with Salmon (OPCIONAL)
+    // STEP 6: PSEUDOALIGNMENT WITH SALMON/KALLISTO (OPTIONAL)
+    // Uses reference GTF and index — independent of novel discovery
     // ==========================================
     if (!params.skip_pseudo_alignment && params.pseudo_aligner) {
 
@@ -498,7 +409,7 @@ workflow LNCRNA {
             ch_strand_inferred_filtered_fastq,
             ch_pseudo_index.first(),
             ch_transcript_fasta.first(),
-            ch_final_annotation.map { meta, gtf -> gtf }.first(),
+            ch_gtf.first(),
             params.gtf_group_features ?: 'gene_id',
             params.gtf_extra_attributes ?: 'gene_name',
             params.pseudo_aligner ?: 'salmon',
@@ -507,7 +418,6 @@ workflow LNCRNA {
             params.kallisto_quant_fraglen ?: 150,
             params.kallisto_quant_fraglen_sd ?: 20
         )
-
         ch_lncrna_gene_counts = QUANTIFY_PSEUDO_ALIGNMENT.out.counts_gene_length_scaled
         ch_lncrna_tpm = QUANTIFY_PSEUDO_ALIGNMENT.out.tpm_gene
         ch_multiqc_files = ch_multiqc_files.mix(QUANTIFY_PSEUDO_ALIGNMENT.out.multiqc.collect{it[1]})
@@ -515,7 +425,8 @@ workflow LNCRNA {
     }
 
     // ==========================================
-    // Differential expression analysis (CONDICIONAL)
+    // STEP 7: DIFFERENTIAL EXPRESSION (OPTIONAL)
+    // Uses lncRNA submatrix from reference quantification
     // ==========================================
     if (params.design_file && !params.skip_differential_expression) {
         ch_design_file = Channel.fromPath(params.design_file, checkIfExists: true)
@@ -538,36 +449,153 @@ workflow LNCRNA {
         )
         ch_de_results = DIFFERENTIAL_EXPRESSION.out.results_xlsx
         ch_de_normalized = DIFFERENTIAL_EXPRESSION.out.normalized
-        // Plots
-        ch_mds_png = DIFFERENTIAL_EXPRESSION.out.mds_png
-        ch_pca_png = DIFFERENTIAL_EXPRESSION.out.pca_png
-        ch_heatmap_global = DIFFERENTIAL_EXPRESSION.out.heatmap_png
-        }
+        ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.normalized.collect{ _meta, file -> file })
 
-    //
-    // MODULE: Generate final report
-    //
-    // ch_de_results_for_report = params.design_file && !params.skip_differential_expression ?
-    //     ch_de_results.map { meta, results -> results } :
-    //     channel.empty()
-    // ch_de_plots_for_report = params.design_file && !params.skip_differential_expression ?
-    //     ch_mds_png
-    //         .mix(ch_pca_png)
-    //         .mix(ch_heatmap_global)
-    //         .collect() :
-    //     channel.empty()
-    // GENERATE_LNCRNA_REPORT (
-    //     ch_de_results_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_results")),
-    //     ch_de_plots_for_report.ifEmpty(file("$projectDir/assets/NO_FILE_de_plots")),
-    //     ch_lncrna_classification.map { meta, file -> file },
-    //     ch_lncrna_stats.map { meta, file -> file },
-    //     ch_cpat_plot.ifEmpty(file("$projectDir/assets/NO_FILE_cpat")),
-    //     ch_alignment_matrix.ifEmpty(file("$projectDir/assets/NO_FILE_counts")),
-    //     ch_final_annotation.map { meta, gtf -> gtf },
-    //     params.novel_lncrnas ? ch_lncrna_gtf.map { meta, gtf -> gtf } : channel.value(file("$projectDir/assets/NO_FILE_rename"))
-    // )
-    // ch_final_report = GENERATE_LNCRNA_REPORT.out.report
-    // ch_pipeline_summary = GENERATE_LNCRNA_REPORT.out.summary
+        ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.mds_png.map    { meta, f -> f }.collect().ifEmpty([]))
+        ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.pca_png.map    { meta, f -> f }.collect().ifEmpty([]))
+        ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.heatmap_png.map{ meta, f -> f }.collect().ifEmpty([]))
+        ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.plots_png.map  { meta, f -> f }.collect().ifEmpty([]))
+        ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.summary_tsv.map{ meta, f -> f }.collect().ifEmpty([]))
+
+        // ── MultiQC config for DE contrasts ──────────────
+    //     MULTIQC_DE_CONFIG(params.contrast)
+
+    //     ch_multiqc_de_config = MULTIQC_DE_CONFIG.out.config
+
+    //     ch_multiqc_files = ch_multiqc_files
+    //         .mix(DIFFERENTIAL_EXPRESSION.out.mds_png.map    { meta, f -> f }.collect().ifEmpty([]))
+    //         .mix(DIFFERENTIAL_EXPRESSION.out.pca_png.map    { meta, f -> f }.collect().ifEmpty([]))
+    //         .mix(DIFFERENTIAL_EXPRESSION.out.heatmap_png.map{ meta, f -> f }.collect().ifEmpty([]))
+    //         .mix(DIFFERENTIAL_EXPRESSION.out.plots_png.map  { meta, f -> f }.collect().ifEmpty([]))
+    //         .mix(DIFFERENTIAL_EXPRESSION.out.summary_tsv.map{ meta, f -> f }.collect().ifEmpty([]))
+    //         .mix(DIFFERENTIAL_EXPRESSION.out.normalized.map { meta, f -> f }.collect().ifEmpty([]))
+    // } else {
+    //     ch_multiqc_de_config = channel.empty()
+    }
+
+    // ==========================================
+    // STEP 8: NOVEL lncRNA DISCOVERY (OPTIONAL)
+    // Runs AFTER quantification and DE — purely exploratory/annotation
+    // ==========================================
+
+    if (params.novel_lncrnas) {
+
+        // --- 8a. Transcript assembly ---
+        STRINGTIE_WORKFLOW (
+            ch_genome_bam,
+            ch_gtf,         // path(gtf) - PREPARE_GENOME.out.gtf
+            ch_fasta,       // path(fasta) - PREPARE_GENOME.out.fasta
+            ch_fai          // path(fai) - PREPARE_GENOME.out.fai
+        )
+        def ch_stringtie_merged = STRINGTIE_WORKFLOW.out.stringtie_gtf_merged
+        def ch_lncrna_candidates_gtf = STRINGTIE_WORKFLOW.out.lncrna_candidates
+        def ch_lncrna_candidates_fa = STRINGTIE_WORKFLOW.out.lncrna_fasta
+        def ch_gffcompare_annotated = STRINGTIE_WORKFLOW.out.gffcompare_annotated
+        def tmap = STRINGTIE_WORKFLOW.out.tmap
+
+        // --- 8b. Coding potential assessment and candidate validation ---
+
+        IDENTIFY_NOVEL_LNCRNA (
+            tmap,                           // gffcompare tracking file
+            //ch_fasta,                       // genome FASTA
+            ch_lncrna_candidates_gtf,       // STRINGTIE_WORKFLOW.out.lncrna_candidates filtered GTF (i, u, x class codes)
+            ch_lncrna_candidates_fa,        // STRINGTIE_WORKFLOW.out.lncrna_fasta transcript sequences FASTA
+            ch_cds_fasta,                     // CDS ref from prepare genome
+            ch_lncrna_fasta,                  // lncRNA from prepare genome
+            ch_mrna_fasta
+        )
+
+        def validated_lncrnas_gtf   = IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf
+        def ch_cpat_hexamer         = IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
+        def ch_cpat_logit           = IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
+        ch_multiqc_files = ch_multiqc_files.mix(IDENTIFY_NOVEL_LNCRNA.out.lncrna_pred_summary)
+
+        // GTF_FILTER_PROTEIN_CODING (
+        //     ch_gtf                              // PREPARE.GENOMES.out.gtf
+        // )
+        // def ch_protein_coding_gtf_novel = GTF_FILTER_PROTEIN_CODING.out.protein_gtf
+
+        // --- 8c. Classification, renaming, BLAST ---
+
+        SUMMARY_AND_CLASSIFY_LNCRNA (
+            validated_lncrnas_gtf,              // IDENTIFY_NOVEL_LNCRNA.out.final_lncrna_gtf // novel lncrnas
+            ch_known_lncrna_gtf,                // PREPARE.GENOMES.known_lncrna_gtf
+            ch_protein_coding_gtf,              // GTF_FILTER_PROTEIN_CODING.out.protein_gtf // PREPARE.GENOMES.out.gtf
+            //ch_gtf,
+            ch_fasta,                           // PREPARE_GENOME.out.fasta
+            blast_protein_database,             // PREPARE_GENOME.out.blast_protein_db
+            ch_lncrna_fasta                        // PREPARE_GENOME.out.lncrna_fasta
+        )
+
+        ch_final_annotation          = SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf
+        def ch_novel_lncrna_fasta    = SUMMARY_AND_CLASSIFY_LNCRNA.out.novel_lncrna_fasta
+        def ch_novel_lncrna_gtf      = SUMMARY_AND_CLASSIFY_LNCRNA.out.novel_lncrna_gtf
+        def ch_protein_fasta         = SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta
+        ch_lncrna_classification     = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
+        ch_lncrna_stats              = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_stats
+
+        // --- 8d. Evaluate novel lncRNAs (CPAT plots, classification report) ---
+        // EVALUATE_FINAL_LNCRNA (
+        //     ch_final_annotation,        // SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf
+        //     ch_novel_lncrna_gtf,       // SUMMARY_AND_CLASSIFY_LNCRNA.out.novel_lncrna_gtf
+        //     ch_novel_lncrna_fasta,      // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_fasta
+        //     ch_protein_fasta,           // SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta
+        //     ch_lncrna_classification,   // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
+        //     ch_cpat_hexamer,            // IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
+        //     ch_cpat_logit               // IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
+        // )
+
+        // def ch_cpat_lncrna_validation = EVALUATE_FINAL_LNCRNA.out.cpat_lncrna_results
+        // def ch_cpat_coding_validation = EVALUATE_FINAL_LNCRNA.out.cpat_coding_results
+        // def ch_cpat_plot              = EVALUATE_FINAL_LNCRNA.out.cpat_plot
+        // def ch_classification_plot    = EVALUATE_FINAL_LNCRNA.out.classification_plot
+
+
+        // --- MULTIQC ---
+        def novel_mqc_config = [
+        "custom_data": [
+            "lncrna_prediction": [
+                "id"          : "lncrna-prediction",
+                "section_name": "Novel lncRNA: Prediction Summary",
+                "description" : "Coding potential predictions for novel lncRNA candidates. Consensus classification derived from CPAT, FEELnc, and PLEK.",
+                "plot_type"   : "table",
+                "pconfig"     : [
+                    "id"   : "lncrna_prediction_table",
+                    "title": "lncRNA Prediction Summary"
+                ],
+                "headers": [
+                    "transcript_id"     : ["title": "transcript_id",    "scale": false, "placement": 1],
+                    "consensus"         : ["title": "consensus",        "scale": false, "placement": 2],
+                    "cpat"              : ["title": "cpat",             "scale": false, "placement": 3],
+                    "feelnc"            : ["title": "feelnc",           "scale": false, "placement": 4],
+                    "plek"              : ["title": "plek",             "scale": false, "placement": 5],
+                    "cpat_score"        : ["title": "cpat_score",       "format": "{:.4f}", "scale": "RdYlGn_r", "min": 0, "max": 1, "placement": 6],
+                    "feelnc_score"      : ["title": "feelnc_score",     "format": "{:.4f}", "scale": "RdYlGn_r", "placement": 7],
+                    "plek_score"        : ["title": "plek_score",       "format": "{:.4f}", "scale": "RdYlGn",   "placement": 8]
+                ]
+            ]
+        ],
+        "sp": [
+            "lncrna_prediction": [
+                "fn": "*.prediction_summary_lncrna.tsv"
+            ]
+        ]
+    ]
+
+    ch_multiqc_files = ch_multiqc_files.mix(
+        channel.value(novel_mqc_config)
+            .collectFile(name: 'lncrna_prediction_mqc.yaml') { it ->
+                def yaml = new org.yaml.snakeyaml.Yaml()
+                yaml.dump(it)
+            }
+    )
+
+    ch_multiqc_files = ch_multiqc_files.mix(
+        IDENTIFY_NOVEL_LNCRNA.out.lncrna_pred_summary
+    )
+
+
+    }
 
     //
     // Collate and save software versions
@@ -629,6 +657,10 @@ workflow LNCRNA {
             sort: true
         )
     )
+
+    ch_multiqc_files.collect().view { files ->
+    "=== MULTIQC FILES ===\n" + files.join("\n")
+    }
 
     MULTIQC (
         ch_multiqc_files.collect(),

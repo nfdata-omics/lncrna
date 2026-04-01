@@ -60,7 +60,10 @@ workflow STRINGTIE_WORKFLOW {
         //
         // FILTER: lncRNA candidates by class code (i, u, x)
         //
-        FILTER_GTF_BY_CLASSCODE ( GFFCOMPARE.out.annotated_gtf.map { it[1] } )
+        FILTER_GTF_BY_CLASSCODE (
+            GFFCOMPARE.out.annotated_gtf.map { it[1] },
+            ch_gtf
+            )
         ch_lncrna_candidates = FILTER_GTF_BY_CLASSCODE.out.filtered_gtf
             .map { gtf_file ->
                 def meta = [ id: 'lncrna_candidates' ]

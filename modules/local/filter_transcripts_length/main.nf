@@ -8,8 +8,8 @@ process FILTER_TRANSCRIPTS_LENGTH {
         'quay.io/biocontainers/biopython:1.78' }"
 
     input:
-    tuple val(meta), path(gtf)                      // From ch_gtf
-    tuple val(meta2), path(fasta)                   // From ch_transcripts_fa
+    tuple val(meta), path(gtf)                      // filtered GTF (i, u, x class codes) //STRINGTIE_WORKFLOW.out.lncrna_candidates
+    tuple val(meta2), path(fasta)                   // transcript sequences FASTA // STRINGTIE_WORKFLOW.out.lncrna_fasta
 
     output:
     tuple val(meta), path("*.length_filtered.gtf")  , emit: filtered_length_gtf

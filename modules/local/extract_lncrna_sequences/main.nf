@@ -9,14 +9,17 @@ process EXTRACT_LNCRNA_SEQUENCES {
     input:
     path fasta
     path gtf
+    val lncrna_biotypes
 
     output:
     path "lncrna_sequences.fa", emit: fasta
     path "versions.yml"        , emit: versions
 
     script:
+    def biotype_pattern = lncrna_biotypes.split(',').collect{ it.trim() }.join('|')
     """
-    awk -F'\\t' '(${'$'}3=="transcript") && (${'$'}9 ~ /(transcript_biotype|gene_biotype|gene_type) "(lncRNA|lincRNA|antisense|sense_intronic|sense_overlapping|processed_transcript|non_coding|3prime_overlapping_ncRNA|non_coding_gene)"/) { if (match(${'$'}9, /transcript_id "([^"]+)"/, m)) print m[1] }' $gtf | sort -u > lnc_ids.txt
+
+    awk -F'\\t' '(${'$'}3=="transcript") && (${'$'}9 ~ /(transcript_biotype|gene_biotype|gene_type) "(${biotype_pattern})"/) { if (match(${'$'}9, /transcript_id "([^"]+)"/, m)) print m[1] }' $gtf | sort -u > lnc_ids.txt
     if [ -s lnc_ids.txt ]; then
         # Extract entries for these transcripts, excluding CDS/codon features to avoid CDS= in headers
         awk 'FNR==NR{ids[${'$'}1]=1; next} { if (match(${'$'}0, /transcript_id "([^"]+)"/, m) && ids[m[1]] && ${'$'}3!="CDS" && ${'$'}3!="start_codon" && ${'$'}3!="stop_codon") print }' lnc_ids.txt $gtf > lnc.gtf

@@ -1,9 +1,4 @@
-<h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nfdata-omics-lncrna_logo.png">
-    <img alt="nf-core/lncrna" src="docs/images/nfdata-omics-lncrna_logo.png">
-  </picture>
-</h1>
+# nfdata-omics lncrna
 
 [![Open in GitHub Codespaces](https://img.shields.io/badge/Open_In_GitHub_Codespaces-black?labelColor=grey&logo=github)](https://github.com/codespaces/new/nfdata-omics/lncrna)
 [![GitHub Actions CI Status](https://github.com/nfdata-omics/lncrna/actions/workflows/nf-test.yml/badge.svg)](https://github.com/nfdata-omics/lncrna/actions/workflows/nf-test.yml)
@@ -21,7 +16,7 @@
 
 **nfdata-omics/lncrna** is a bioinformatics pipeline that processes RNA‑seq data to quantify known lncRNAs and optionally discover novel lncRNAs. It performs FASTQ QC and alignment, transcript assembly and novelty filtering, coding‑potential assessment, genomic‑context classification, and reporting. By default it runs in known‑only-lncrnas mode; enabling the discovery branch adds identification, coding-potential assessment and a final evaluation of lncRNAs.
 
-![nfdata-omics/lncrna metro map](docs/images/nfdata-omics-lncrna-pipeline.png)
+<!--![nfdata-omics/lncrna metro map](docs/images/nfdata-omics-lncrna-pipeline.png) -->
 
 - FASTQ QC and trimming; optional rRNA removal and filtering
 - Alignment and quantification (STAR or HISAT2)
@@ -95,7 +90,7 @@ nextflow run main.nf \
 
 ## Credits
 
-nfdata-omics/lncrna was originally written by K. Ruiz-Ceja, M. Bonfanti, ....
+nfdata-omics/lncrna was originally written by K. Ruiz-Ceja, M. Bonfanti....
 
 We thank the following people for their extensive assistance in the development of this pipeline:
 

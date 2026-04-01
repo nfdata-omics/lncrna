@@ -81,7 +81,8 @@ workflow NFDATAOMICS_LNCRNA {
         params.gencode,
         params.ncrna_fasta,
         params.validate_scaffolds,
-        params.filter_lncrna_gtf,
+        //params.filter_lncrna_gtf,
+        params.lncrna_biotypes,
         params.featurecounts_group_type,
         params.aligner,
         params.pseudo_aligner,
@@ -125,10 +126,11 @@ workflow NFDATAOMICS_LNCRNA {
         PREPARE_GENOME.out.rrna_fastas,                     // ch_ribo_db
         PREPARE_GENOME.out.sortmerna_index,
         PREPARE_GENOME.out.splicesites,
-        PREPARE_GENOME.out.cds_fasta,                       // ch_cds_ref
+        PREPARE_GENOME.out.cds_fasta,                       // ch_cds_fasta
+        PREPARE_GENOME.out.mrna_fasta,                      // ch_mrna_fasta
         PREPARE_GENOME.out.lncrna_fasta,                    // ch_lncrna_ref
         PREPARE_GENOME.out.known_lncrna_gtf,                // ch_known_lncrna_gtf
-        PREPARE_GENOME.out.lncrna_fasta,                    // ch_lncrna_fasta
+        //PREPARE_GENOME.out.lncrna_fasta,                    // ch_lncrna_fasta
         PREPARE_GENOME.out.blast_protein_db,                // blast_protein_database
         !params.sortmerna_index && params.remove_ribo_rna   // make_sortmerna_index
     )

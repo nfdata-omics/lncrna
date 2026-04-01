@@ -17,7 +17,7 @@ process EXTRACT_CDS_SEQUENCES {
     script:
     """
     # Filter GTF for protein_coding transcripts
-    awk -F'\\t' '(\$3=="transcript") && (\$9 ~ /(transcript_biotype|gene_biotype|gene_type) "protein_coding"/) { if (match(\$9, /transcript_id "([^"]+)"/, m)) print m[1] }' $gtf | sort -u > cds_ids.txt
+    awk -F'\\t' '(\$3=="transcript" || \$3=="gene") && (\$9 ~ /(transcript_biotype|gene_biotype|gene_type) "protein_coding"/) { if (match(\$9, /transcript_id "([^"]+)"/, m)) print m[1] }' $gtf | sort -u > cds_ids.txt
 
     if [ -s cds_ids.txt ]; then
         # Extract entries for these transcripts

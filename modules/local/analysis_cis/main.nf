@@ -1,4 +1,4 @@
-process ANALYSIS_CIS_TRANS {
+process ANALYSIS_CIS {
     tag "$meta.id"
     label 'process_medium'
 
@@ -12,12 +12,12 @@ process ANALYSIS_CIS_TRANS {
 
     output:
     path "*.cis_results.tsv", emit: cis_results
-    path "*.trans_results.tsv", optional: true, emit: trans_results
+    //path "*.trans_results.tsv", optional: true, emit: trans_results
     path "versions.yml", emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
-    template 'analyze_cis_trans.py'
+    template 'analyze_cis.py'
 }

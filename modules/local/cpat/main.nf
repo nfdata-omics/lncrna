@@ -7,7 +7,7 @@ process CPAT {
         'biocontainers/cpat:3.0.5--py39hff726c5_4' }"
 
     input:
-    tuple val(meta), path(fasta)            // From ch_filtered_exons_fa
+    tuple val(meta), path(fasta)            // FILTER_TRANSCRIPTS_EXONS.out.filtered_exon_fasta
     path hexamer                            // From ch_cpat_hexamer
     path logit_model                        // From ch_cpat_logit
 
@@ -28,10 +28,15 @@ process CPAT {
         -x $hexamer \\
         -d $logit_model \\
         -o ${prefix}.cpat \\
-        $args
+        --min-orf 10 \\
+        $args || true
 
-    # Rename output
-    mv ${prefix}.cpat ${prefix}.cpat.tsv
+    # Guard in case no ORFs found
+    if [ -f ${prefix}.cpat.ORF_prob.best.tsv ]; then
+        mv ${prefix}.cpat.ORF_prob.best.tsv ${prefix}.cpat.tsv
+    else
+        echo -e "seq_ID\tID\tmRNA\tORF_strand\tORF_frame\tORF_start\tORF_end\tORF\tFickett\tHexamer\tCoding_prob" > ${prefix}.cpat.tsv
+    fi
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

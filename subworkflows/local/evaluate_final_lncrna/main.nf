@@ -5,13 +5,13 @@ include { GENERATE_FINAL_STATISTICS        } from '../../../modules/local/genera
 workflow EVALUATE_FINAL_LNCRNA {
 
 take:
-    final_gtf              // tuple val(meta), path(gtf)  - Combined annotation (lncRNAs + proteins)
-    lncrna_gtf             // tuple val(meta), path(gtf)  - LncRNAs only GTF
-    lncrna_fasta           // tuple val(meta), path(fa)   - LncRNA sequences
-    protein_fasta          // tuple val(meta), path(fa)   - Protein-coding sequences
-    lncrna_classification  // tuple val(meta), path(txt)  - Classification file
-    cpat_hexamer           // path(tsv)                   - CPAT hexamer table
-    cpat_logit_model       // path(RData)                 - CPAT logit model
+    final_gtf              // tuple val(meta), path(gtf)  - Combined annotation (lncRNAs + proteins) // SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf
+    lncrna_gtf             // tuple val(meta), path(gtf)  - LncRNAs only GTF            // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_gtf
+    final_lncrna_fasta           // tuple val(meta), path(fa)   - LncRNA sequences //lncrna_fasta  // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_fasta
+    protein_fasta          // tuple val(meta), path(fa)   - Protein-coding sequences    // SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta
+    lncrna_classification  // tuple val(meta), path(txt)  - Classification file         // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
+    cpat_hexamer           // path(tsv)                   - CPAT hexamer table          // IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
+    cpat_logit_model       // path(RData)                 - CPAT logit model            // IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
 
 main:
     ch_versions = Channel.empty()
@@ -20,7 +20,7 @@ main:
 // Re-run CPAT on final lncRNAs (validation)
 //
 RERUN_CPAT_LNCRNA (
-    lncrna_fasta,           // lncrna_fasta
+    final_lncrna_fasta.map { meta, fa -> [ [id: 'lncrna_eval'], fa ] },           // lncrna_fasta
     cpat_hexamer,
     cpat_logit_model
 )
@@ -31,7 +31,7 @@ ch_cpat_lncrna_results = RERUN_CPAT_LNCRNA.out.cpat_results
 // Re-run CPAT on protein-coding genes (control)
 //
 RERUN_CPAT_CODING (
-    protein_fasta,
+    protein_fasta.map { meta, fa -> [ [id: 'coding_eval'], fa ] },
     cpat_hexamer,
     cpat_logit_model
 )
@@ -48,9 +48,9 @@ GENERATE_FINAL_STATISTICS (
     ch_cpat_coding_results.map { meta, file -> file },
     lncrna_classification.map { meta, file -> file }
 )
-ch_final_stats_report = GENERATE_FINAL_STATISTICS.out.final_stats_report
-ch_final_stats_summary = GENERATE_FINAL_STATISTICS.out.final_stats_summary
-ch_cpat_plot = GENERATE_FINAL_STATISTICS.out.cpat_plot
+ch_final_stats_report       = GENERATE_FINAL_STATISTICS.out.final_stats_report
+ch_final_stats_summary      = GENERATE_FINAL_STATISTICS.out.final_stats_summary
+ch_cpat_plot                = GENERATE_FINAL_STATISTICS.out.cpat_plot
 ch_cpat_classification_plot = GENERATE_FINAL_STATISTICS.out.cpat_classification_plot
 //ch_versions = ch_versions.mix(GENERATE_FINAL_STATISTICS.out.versions)
 
