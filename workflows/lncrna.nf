@@ -18,12 +18,9 @@ include { FASTQ_ALIGN_STAR                      } from '../subworkflows/nf-core/
 include { FASTQ_ALIGN_HISAT2                    } from '../subworkflows/nf-core/fastq_align_hisat2'
 include { BAM_DEDUP_UMI as BAM_DEDUP_UMI_STAR   } from '../subworkflows/nf-core/bam_dedup_umi'
 include { BAM_DEDUP_UMI as BAM_DEDUP_UMI_HISAT2 } from '../subworkflows/nf-core/bam_dedup_umi'
-//include { SUBREAD_FEATURECOUNTS                 } from '../modules/nf-core/subread/featurecounts/main'
-//include { HTSEQ_COUNT                           } from '../modules/nf-core/htseq/count/main'
 include { STRINGTIE_WORKFLOW                    } from '../subworkflows/local/stringtie'
 include { IDENTIFY_NOVEL_LNCRNA                 } from '../subworkflows/local/identify_novel_lncrna'
 include { SUMMARY_AND_CLASSIFY_LNCRNA           } from '../subworkflows/local/summary_and_classify_lncrna'
-//include { EVALUATE_FINAL_LNCRNA                 } from '../subworkflows/local/evaluate_final_lncrna'
 include { QUANTIFY_EXPRESSION                   } from '../subworkflows/local/quantify_expression'
 include { GENERATE_COUNT_MATRIX                 } from '../modules/local/generate_count_matrix'
 include { ANALYSIS_CIS                          } from '../modules/local/analysis_cis'
@@ -35,7 +32,6 @@ include { CLASSIFY_LNCRNA                       } from '../modules/local/classif
 include { GTF_FILTER_PROTEIN_CODING             } from '../modules/local/gtf_filter_protein_coding'
 include { BAM_MARKDUPLICATES_PICARD             } from '../subworkflows/nf-core/bam_markduplicates_picard/main'
 include { FASTQC as FASTQC_TRIM                 } from '../modules/nf-core/fastqc/main'
-//include { MULTIQC_DE_CONFIG                     } from '../modules/local/multiqc_de_config'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -456,21 +452,6 @@ workflow LNCRNA {
         ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.heatmap_png.map{ meta, f -> f }.collect().ifEmpty([]))
         ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.plots_png.map  { meta, f -> f }.collect().ifEmpty([]))
         ch_multiqc_files = ch_multiqc_files.mix(DIFFERENTIAL_EXPRESSION.out.summary_tsv.map{ meta, f -> f }.collect().ifEmpty([]))
-
-        // ── MultiQC config for DE contrasts ──────────────
-    //     MULTIQC_DE_CONFIG(params.contrast)
-
-    //     ch_multiqc_de_config = MULTIQC_DE_CONFIG.out.config
-
-    //     ch_multiqc_files = ch_multiqc_files
-    //         .mix(DIFFERENTIAL_EXPRESSION.out.mds_png.map    { meta, f -> f }.collect().ifEmpty([]))
-    //         .mix(DIFFERENTIAL_EXPRESSION.out.pca_png.map    { meta, f -> f }.collect().ifEmpty([]))
-    //         .mix(DIFFERENTIAL_EXPRESSION.out.heatmap_png.map{ meta, f -> f }.collect().ifEmpty([]))
-    //         .mix(DIFFERENTIAL_EXPRESSION.out.plots_png.map  { meta, f -> f }.collect().ifEmpty([]))
-    //         .mix(DIFFERENTIAL_EXPRESSION.out.summary_tsv.map{ meta, f -> f }.collect().ifEmpty([]))
-    //         .mix(DIFFERENTIAL_EXPRESSION.out.normalized.map { meta, f -> f }.collect().ifEmpty([]))
-    // } else {
-    //     ch_multiqc_de_config = channel.empty()
     }
 
     // ==========================================
@@ -533,23 +514,6 @@ workflow LNCRNA {
         def ch_protein_fasta         = SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta
         ch_lncrna_classification     = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
         ch_lncrna_stats              = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_stats
-
-        // --- 8d. Evaluate novel lncRNAs (CPAT plots, classification report) ---
-        // EVALUATE_FINAL_LNCRNA (
-        //     ch_final_annotation,        // SUMMARY_AND_CLASSIFY_LNCRNA.out.final_gtf
-        //     ch_novel_lncrna_gtf,       // SUMMARY_AND_CLASSIFY_LNCRNA.out.novel_lncrna_gtf
-        //     ch_novel_lncrna_fasta,      // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_fasta
-        //     ch_protein_fasta,           // SUMMARY_AND_CLASSIFY_LNCRNA.out.protein_fasta
-        //     ch_lncrna_classification,   // SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_classification
-        //     ch_cpat_hexamer,            // IDENTIFY_NOVEL_LNCRNA.out.cpat_hexamer
-        //     ch_cpat_logit               // IDENTIFY_NOVEL_LNCRNA.out.cpat_logit
-        // )
-
-        // def ch_cpat_lncrna_validation = EVALUATE_FINAL_LNCRNA.out.cpat_lncrna_results
-        // def ch_cpat_coding_validation = EVALUATE_FINAL_LNCRNA.out.cpat_coding_results
-        // def ch_cpat_plot              = EVALUATE_FINAL_LNCRNA.out.cpat_plot
-        // def ch_classification_plot    = EVALUATE_FINAL_LNCRNA.out.classification_plot
-
 
         // --- MULTIQC ---
         def novel_mqc_config = [
