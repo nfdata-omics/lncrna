@@ -1,5 +1,4 @@
 include { FILTER_KNOWN_LNCRNA       } from '../../../modules/local/filter_known_lncrna'
-include { RENAME_LNCRNA             } from '../../../modules/local/rename_lncrna'
 include { CLASSIFY_LNCRNA           } from '../../../modules/local/classify_lncrna'
 include { MERGE_FINAL_ANNOTATION    } from '../../../modules/local/merge_final_annotation'
 include { BLASTX                    } from '../../../modules/local/blastx'
@@ -61,17 +60,6 @@ FILTER_BLAST_RESULTS (
     )
 //ch_blast_filtered_fasta = FILTER_BLAST_RESULTS.out.filtered_fasta
 //ch_versions = ch_versions.mix(FILTER_BLAST_RESULTS.out.versions)
-
-//
-// Rename lncRNAs based on closest protein-coding gene
-//
-// RENAME_LNCRNA (
-//     ch_truly_novel_gtf,              // FILTER_KNOWN_LNCRNA.out.gtf
-//     protein_coding_gtf_novel      // GTF_FILTER_PROTEIN_CODING.out.protein_gtf
-//     )
-
-// ch_novel_lncrna_gtf = RENAME_LNCRNA.out.gtf
-//ch_versions = ch_versions.mix(RENAME_LNCRNA.out.versions)
 
 //
 // Classify lncRNAs by genomic location
