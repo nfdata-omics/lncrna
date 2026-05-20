@@ -516,43 +516,43 @@ workflow LNCRNA {
         ch_lncrna_stats              = SUMMARY_AND_CLASSIFY_LNCRNA.out.lncrna_stats
 
         // --- MULTIQC ---
-        def novel_mqc_config = [
-        "custom_data": [
-            "lncrna_prediction": [
-                "id"          : "lncrna-prediction",
-                "section_name": "Novel lncRNA: Prediction Summary",
-                "description" : "Coding potential predictions for novel lncRNA candidates. Consensus classification derived from CPAT, FEELnc, and PLEK.",
-                "plot_type"   : "table",
-                "pconfig"     : [
-                    "id"   : "lncrna_prediction_table",
-                    "title": "lncRNA Prediction Summary"
-                ],
-                "headers": [
-                    "transcript_id"     : ["title": "transcript_id",    "scale": false, "placement": 1],
-                    "consensus"         : ["title": "consensus",        "scale": false, "placement": 2],
-                    "cpat"              : ["title": "cpat",             "scale": false, "placement": 3],
-                    "feelnc"            : ["title": "feelnc",           "scale": false, "placement": 4],
-                    "plek"              : ["title": "plek",             "scale": false, "placement": 5],
-                    "cpat_score"        : ["title": "cpat_score",       "format": "{:.4f}", "scale": "RdYlGn_r", "min": 0, "max": 1, "placement": 6],
-                    "feelnc_score"      : ["title": "feelnc_score",     "format": "{:.4f}", "scale": "RdYlGn_r", "placement": 7],
-                    "plek_score"        : ["title": "plek_score",       "format": "{:.4f}", "scale": "RdYlGn",   "placement": 8]
-                ]
-            ]
-        ],
-        "sp": [
-            "lncrna_prediction": [
-                "fn": "*.prediction_summary_lncrna.tsv"
-            ]
-        ]
-    ]
+    //     def novel_mqc_config = [
+    //     "custom_data": [
+    //         "lncrna_prediction": [
+    //             "id"          : "lncrna-prediction",
+    //             "section_name": "Novel lncRNA: Prediction Summary",
+    //             "description" : "Coding potential predictions for novel lncRNA candidates. Consensus classification derived from CPAT, FEELnc, and PLEK.",
+    //             "plot_type"   : "table",
+    //             "pconfig"     : [
+    //                 "id"   : "lncrna_prediction_table",
+    //                 "title": "lncRNA Prediction Summary"
+    //             ],
+    //             "headers": [
+    //                 "transcript_id"     : ["title": "transcript_id",    "scale": false, "placement": 1],
+    //                 "consensus"         : ["title": "consensus",        "scale": false, "placement": 2],
+    //                 "cpat"              : ["title": "cpat",             "scale": false, "placement": 3],
+    //                 "feelnc"            : ["title": "feelnc",           "scale": false, "placement": 4],
+    //                 "plek"              : ["title": "plek",             "scale": false, "placement": 5],
+    //                 "cpat_score"        : ["title": "cpat_score",       "format": "{:.4f}", "scale": "RdYlGn_r", "min": 0, "max": 1, "placement": 6],
+    //                 "feelnc_score"      : ["title": "feelnc_score",     "format": "{:.4f}", "scale": "RdYlGn_r", "placement": 7],
+    //                 "plek_score"        : ["title": "plek_score",       "format": "{:.4f}", "scale": "RdYlGn",   "placement": 8]
+    //             ]
+    //         ]
+    //     ],
+    //     "sp": [
+    //         "lncrna_prediction": [
+    //             "fn": "*.prediction_summary_lncrna.tsv"
+    //         ]
+    //     ]
+    // ]
 
-    ch_multiqc_files = ch_multiqc_files.mix(
-        channel.value(novel_mqc_config)
-            .collectFile(name: 'lncrna_prediction_mqc.yaml') { it ->
-                def yaml = new org.yaml.snakeyaml.Yaml()
-                yaml.dump(it)
-            }
-    )
+    // ch_multiqc_files = ch_multiqc_files.mix(
+    //     channel.value(novel_mqc_config)
+    //         .collectFile(name: 'lncrna_prediction_mqc.yaml') { it ->
+    //             def yaml = new org.yaml.snakeyaml.Yaml()
+    //             yaml.dump(it)
+    //         }
+    // )
 
     ch_multiqc_files = ch_multiqc_files.mix(
         IDENTIFY_NOVEL_LNCRNA.out.lncrna_pred_summary
@@ -622,7 +622,7 @@ workflow LNCRNA {
         )
     )
 
-    ch_multiqc_files.collect().view { files ->
+    ch_multiqc_files.collect() { files ->
     "=== MULTIQC FILES ===\n" + files.join("\n")
     }
 

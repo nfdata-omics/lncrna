@@ -1,0 +1,124 @@
+%%metro title: lncRNAs Pipeline
+%%metro logo: /home/karla.ruiz/nfdata-omics-lncrna/assets/ht_logo.png
+%%metro style: light
+%%metro file: fastq_in | FASTQ
+%%metro file: report_final | HTML
+%%metro file: report_quant | HTML
+%%metro file: report_novel | HTML
+%%metro line: standard | Aligner: STAR, Quantification: featureCounts (default) | #66BB6A
+%%metro line: novel    | Identification of novel lncRNAs   | #EF5350
+%%metro line: pseudo_salmon | Pseudo-aligner and quantification: Salmon | #0570b0
+%%metro line: pseudo_kallisto | Pseudo-aligner and quantification: Kallisto | #7b2d3b
+%%metro legend: bl
+%%metro grid: preprocessing | 0,0,0
+%%metro grid: alignment | 1,0,0
+%%metro grid: quantification | 2,0,2
+%%metro grid: novel | 2,1,2
+%%metro grid: pseudo_align | 1,1,1
+
+graph LR
+    subgraph preprocessing [Pre-processing]
+        %%metro exit: right | standard, novel
+        %%metro exit: bottom | pseudo_salmon, pseudo_kallisto
+
+        fastq_in[ ]
+        fastqc_raw[FastQC]
+        fastp[fastp]
+        trimgalore[Trim Galore!]
+        fastqc_trimmed[FastQC]
+        bbsplit[BBSplit]
+        sortmerna[SortMeRNA]
+
+        fastq_in -->|standard,novel,pseudo_salmon,pseudo_kallisto| fastqc_raw
+        fastqc_raw -->|standard,novel,pseudo_salmon,pseudo_kallisto| fastp
+        fastqc_raw -->|standard,novel,pseudo_salmon,pseudo_kallisto| trimgalore
+        fastp -->|standard,novel,pseudo_salmon,pseudo_kallisto| fastqc_trimmed
+        trimgalore -->|standard,novel,pseudo_salmon,pseudo_kallisto| fastqc_trimmed
+        fastqc_trimmed -->|standard,novel,pseudo_salmon,pseudo_kallisto| bbsplit
+        fastqc_trimmed -->|standard,novel,pseudo_salmon,pseudo_kallisto| sortmerna
+    end
+
+    subgraph alignment [Genome alignment]
+        %%metro entry: left | standard, novel
+        %%metro exit: right | standard
+        %%metro exit: bottom | novel
+
+        star[STAR]
+        hisat2[HISAT2]
+        umi_tools_dedup[UMI-tools Dedup]
+
+        star -->|standard,novel| umi_tools_dedup
+        hisat2 -->|standard,novel| umi_tools_dedup
+    end
+
+    subgraph quantification [Quantification]
+        %%metro entry: left | standard
+        %%metro exit: right | standard
+
+        featureCounts[featureCounts]
+        htseq[HTSeq]
+        cis_trans[Cis / trans]
+        downstream_standard[Differential\nExpression]
+        multiqc_de[MultiQC]
+        report_final[ ]
+
+        featureCounts -->|standard| cis_trans
+        htseq -->|standard| cis_trans
+        cis_trans -->|standard| downstream_standard
+        downstream_standard -->|standard| multiqc_de
+        multiqc_de -->|standard| report_final
+    end
+
+    subgraph novel [Novel lncRNAs]
+        %%metro entry: left | novel
+        %%metro exit: right | novel
+
+        assemble[StringTie]
+        filter_novel[Filtering]
+        CPAT[CPAT]
+        FEELnc[FEELnc]
+        PLEK[PLEK]
+        merge_predictions[Coding Potential\nconsensus]
+        classify_novel[Novel\ncandidates]
+        multiqc[MultiQC]
+        report_novel[ ]
+
+        assemble -->|novel| filter_novel
+        filter_novel -->|novel| CPAT
+        filter_novel -->|novel| FEELnc
+        filter_novel -->|novel| PLEK
+        CPAT -->|novel| merge_predictions
+        FEELnc -->|novel| merge_predictions
+        PLEK -->|novel| merge_predictions
+        merge_predictions -->|novel| classify_novel
+        classify_novel -->|novel| multiqc
+        multiqc -->|novel| report_novel
+    end
+
+    subgraph pseudo_align [Pseudo-alignment & quantification]
+        %%metro entry: left | pseudo_salmon, pseudo_kallisto
+
+        salmon[Salmon]
+        kallisto[Kallisto]
+        tximport_pa[tximport]
+        multiqc_quant[MultiQC]
+        report_quant[ ]
+
+        salmon -->|pseudo_salmon| tximport_pa
+        kallisto -->|pseudo_kallisto| tximport_pa
+        tximport_pa -->|pseudo_salmon,pseudo_kallisto| multiqc_quant
+        multiqc_quant -->|pseudo_salmon,pseudo_kallisto| report_quant
+    end
+
+    %% Inter-section edges
+    bbsplit -->|standard,novel| star
+    sortmerna -->|standard,novel| star
+    bbsplit -->|standard,novel| hisat2
+    sortmerna -->|standard,novel| hisat2
+    bbsplit -->|pseudo_salmon| salmon
+    sortmerna -->|pseudo_salmon| salmon
+    bbsplit -->|pseudo_kallisto| kallisto
+    sortmerna -->|pseudo_kallisto| kallisto
+    umi_tools_dedup -->|standard| featureCounts
+    umi_tools_dedup -->|standard| htseq
+    umi_tools_dedup -->|novel| assemble

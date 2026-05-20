@@ -14,16 +14,18 @@
 
 ## Introduction
 
-**nfdata-omics/lncrna** is a bioinformatics pipeline that processes RNA‑seq data to quantify known lncRNAs and optionally discover novel lncRNAs. It performs FASTQ QC and alignment, transcript assembly and novelty filtering, coding‑potential assessment, genomic‑context classification, and reporting. By default it runs in known‑only-lncrnas mode; enabling the discovery branch adds identification, coding-potential assessment and a final evaluation of lncRNAs.
+**nfdata-omics/lncrna** is a bioinformatics pipeline for RNA-seq analysis focused on long non-coding RNAs (lncRNAs). It supports both quantification of known lncRNAs and, optionally, discovery of novel lncRNA candidates. The workflow covers read QC and preprocessing, alignment, transcript assembly, novelty filtering, coding-potential assessment, genomic-context classification, expression quantification, and final reporting.
 
-<!--![nfdata-omics/lncrna metro map](docs/images/nfdata-omics-lncrna-pipeline.png) -->
+By default, the pipeline runs in `known-only-lncrnas` mode. When the discovery branch is enabled, it additionally identifies novel candidates, evaluates their coding potential, and generates a final lncRNA assessment.
 
-- FASTQ QC and trimming; optional rRNA removal and filtering
-- Alignment and quantification (STAR or HISAT2)
-- Transcript assembly (StringTie) and merge
-- Pseudo-allignment with Salmon.
-- Optional novel lncRNAs identification: Coding-potential (CPAT/FEELnc/PLEK), filter against known lncRNAs, classification.
-- Final HTML report and aggregated QC (MultiQC)
+![nfdata-omics/lncrna workflow](./assets/lncrnas.svg)
+
+- Read QC with [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), trimming with [fastp](https://github.com/OpenGene/fastp) or [Trim Galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/), and optional rRNA removal with [SortMeRNA](https://github.com/sortmerna/sortmerna)
+- Alignment with [STAR](https://github.com/alexdobin/STAR) or [HISAT2](https://github.com/DaehwanKimLab/hisat2), with BAM processing and alignment statistics via [samtools](https://www.htslib.org/)
+- Transcript assembly and merge with [StringTie](https://ccb.jhu.edu/software/stringtie/) and novelty comparison with [gffcompare](https://ccb.jhu.edu/software/stringtie/gffcompare.shtml)
+- Expression quantification with [featureCounts](https://subread.sourceforge.net/featureCounts.html) and pseudo-alignment-based quantification with [Salmon](https://combine-lab.github.io/salmon/)
+- Optional novel lncRNA identification using coding-potential tools such as [CPAT](https://github.com/liguowang/cpat), [FEELnc](https://github.com/tderrien/FEELnc), and [PLEK](https://sourceforge.net/projects/plek/files/)
+- Final HTML reporting and aggregated QC with [MultiQC](https://github.com/MultiQC/MultiQC)
 
 <!-- Add a tube map or workflow figure here if desired -->
 
@@ -43,7 +45,7 @@ Run in known‑only mode (default):
 
 ```bash
 nextflow run main.nf \
-  --input assets/samplesheet.csv \
+  --input samplesheet.csv \
   --fasta /path/to/genome.fa \
   --gtf /path/to/genes.gtf \
   --outdir /path/to/output \
@@ -55,7 +57,7 @@ Enable novel lncRNA discovery:
 
 ```bash
 nextflow run main.nf \
-  --input assets/samplesheet.csv \
+  --input samplesheet.csv \
   --fasta /path/to/genome.fa \
   --gtf /path/to/genes.gtf \
   --outdir /path/to/output_novel \
@@ -66,27 +68,6 @@ nextflow run main.nf \
 
 > [!WARNING]
 > Provide pipeline parameters via the CLI or Nextflow `-params-file`. Custom config files (`-c`) can adjust executor and resource configuration but should not define parameters; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
-
-## Outputs
-
-### Known lncRNA assessment
-
-- lncrna_gtf_filtering/by_classcode: filtered GTF and classcode stats
-- lncrna_final_annotation: final combined annotation and splits
-- expression/quantification: per‑sample quantification outputs
-- multiqc: aggregated QC report
-
-### Novel lncRNAs discovery
-
-- lncrna_transcript_filtering/transcripts_length: length‑filtered outputs
-- lncrna_transcript_filtering/transcripts_exons: exon‑filtered outputs
-- lncrna_prediction/cpat: CPAT predictions
-- lncrna_prediction/cpat/models: CPAT models when built
-- lncrna_prediction/plek and lncrna_prediction/feelnc: tool‑specific outputs
-- lncrna_prediction/combined_predictions: consensus results
-- expression/matrix: merged count matrix and gene metadata
-- lncrna_report: final HTML report and summary text
-- multiqc: aggregated QC report
 
 ## Credits
 
@@ -105,9 +86,7 @@ If you would like to contribute to this pipeline, please see the [contributing g
 <!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
 <!-- If you use nfdata-omics/lncrna for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
 
-<!-- TODO nf-core: Add bibliography of tools and data used in your pipeline -->
-
-An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
+A bibliography of the tools and data used by the pipeline is available in [`CITATIONS.md`](CITATIONS.md).
 
 This pipeline uses code and infrastructure developed and maintained by the [nf-core](https://nf-co.re) community, reused here under the [MIT license](https://github.com/nf-core/tools/blob/main/LICENSE).
 
