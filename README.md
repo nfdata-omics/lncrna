@@ -18,7 +18,7 @@
 
 By default, the pipeline runs in `known-only-lncrnas` mode. When the discovery branch is enabled, it additionally identifies novel candidates, evaluates their coding potential, and generates a final lncRNA assessment.
 
-![nfdata-omics/lncrna workflow](assests/lncrnas.svg)
+![nfdata-omics/lncrna workflow](./assets/lncrnas.svg)
 
 - Read QC with [FastQC](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), trimming with [fastp](https://github.com/OpenGene/fastp) or [Trim Galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/), and optional rRNA removal with [SortMeRNA](https://github.com/sortmerna/sortmerna)
 - Alignment with [STAR](https://github.com/alexdobin/STAR) or [HISAT2](https://github.com/DaehwanKimLab/hisat2), with BAM processing and alignment statistics via [samtools](https://www.htslib.org/)
