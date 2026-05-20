@@ -733,6 +733,9 @@
             "$ref": "#/$defs/differential_expression"
         },
         {
+            "$ref": "#/$defs/lncrna_biotypes"
+        },
+        {
             "$ref": "#/$defs/blast"
         },
         {
